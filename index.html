@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#174b31">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Lori Lab">
+<title>Lori Lab – הדפסת תעודה v4</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=David+Libre:wght@400;500;700&display=swap');
+*{box-sizing:border-box}
+:root{--green:#174b31;--gold:#c9a12d;--bg:#eef3ef}
+html,body{margin:0;background:var(--bg);font-family:"David Libre",David,serif;color:#173b2a}
+.app{max-width:620px;margin:auto;padding:14px}
+.card{background:#fff;border-radius:16px;padding:18px;box-shadow:0 8px 26px rgba(0,0,0,.12)}
+h1{margin:0 0 18px;text-align:center;font-size:24px;color:var(--green);border-bottom:3px solid var(--gold);padding-bottom:11px}
+.field{margin-bottom:12px}
+label{display:block;font-weight:700;margin-bottom:6px}
+input,textarea{width:100%;border:1px solid #b8c6bd;border-radius:10px;padding:12px;font-size:17px;font-family:"David Libre",David,serif;background:#fff}
+textarea{min-height:72px;resize:vertical}
+.sex{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sex label{margin:0;border:2px solid #d1dbd4;border-radius:10px;padding:12px;text-align:center;font-size:18px}
+.sex input{width:auto;margin-left:6px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+button{border:0;border-radius:10px;padding:14px;font-size:17px;font-weight:700;cursor:pointer}
+.primary{background:var(--green);color:#fff}
+.secondary{background:#e7efe9;color:var(--green)}
+.preview-card{margin-top:14px;background:#dde6df;border-radius:14px;padding:8px;overflow:auto}
+canvas{display:block;width:100%;height:auto;background:white;box-shadow:0 6px 20px rgba(0,0,0,.14)}
+.note{font-size:13px;line-height:1.5;color:#56665d;margin-top:12px}
+@page{size:A4;margin:0}
+@media print{
+  body{background:#fff}
+  .app>.card,.note{display:none!important}
+  .app{max-width:none;padding:0;margin:0}
+  .preview-card{margin:0;padding:0;background:#fff;border-radius:0;overflow:visible}
+  canvas{width:210mm!important;height:297mm!important;box-shadow:none!important}
+}
+
+.topbar{background:#fff;border-radius:16px;padding:14px;margin-bottom:14px;box-shadow:0 6px 20px rgba(0,0,0,.1)}
+.topbar h1{margin:0 0 12px;text-align:center;color:var(--green);font-size:28px}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tab{background:#e8efe9;color:var(--green);padding:10px 6px;font-size:15px}
+.tab.active{background:var(--green);color:#fff}
+.screen{display:none}
+.screen.active{display:block}
+h2{margin:0 0 14px;color:var(--green)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+select{width:100%;border:1px solid #b8c6bd;border-radius:10px;padding:12px;font-size:17px;font-family:"David Libre",David,serif;background:#fff}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.small{padding:9px 12px;font-size:14px}
+.hidden{display:none!important}
+.list{margin-top:12px;display:grid;gap:10px}
+.list-item{border:1px solid #d5dfd8;border-radius:12px;padding:12px;background:#fafcfb}
+.list-title{font-size:19px;font-weight:700;color:var(--green)}
+.list-sub{font-size:14px;color:#657268;margin-top:4px}
+.list-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.list-actions button{padding:8px 10px;font-size:14px}
+.favorite-line{display:flex;align-items:center;gap:8px;margin:8px 0 4px}
+.favorite-line input{width:auto}
+.empty{padding:20px;text-align:center;color:#6f7d73}
+@media(max-width:480px){.grid2{grid-template-columns:1fr}.tabs{grid-template-columns:1fr 1fr 1fr}.tab{font-size:13px}}
+@media print{
+  .topbar,.screen:not(#certificateScreen),#certificateScreen>.card{display:none!important}
+  #certificateScreen{display:block!important}
+}
+
+</style>
+</head>
+
+<body>
+<div class="app">
+  <header class="topbar">
+    <h1>Lori Lab</h1>
+    <div class="tabs">
+      <button class="tab active" data-screen="certificateScreen">תעודה חדשה</button>
+      <button class="tab" data-screen="customersScreen">לקוחות</button>
+      <button class="tab" data-screen="historyScreen">היסטוריה</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="certificateScreen" class="screen active">
+      <div class="card">
+        <h2>תעודה חדשה</h2>
+
+        <div class="grid2">
+          <div class="field">
+            <label for="citySelect">עיר</label>
+            <select id="citySelect"></select>
+          </div>
+          <div class="field">
+            <label for="clientSelect">לקוח</label>
+            <select id="clientSelect"></select>
+          </div>
+        </div>
+
+        <div class="field"><label for="owner">שם הבעלים</label><input id="owner"></div>
+        <div class="field"><label for="sender">שם השולח</label><input id="sender"></div>
+        <div class="field"><label for="birdType">סוג</label><input id="birdType"></div>
+        <div class="field"><label for="idNumber">מספר זיהוי</label><input id="idNumber"></div>
+        <div class="field"><label for="description">תיאור</label><textarea id="description"></textarea></div>
+        <div class="field"><label for="date">תאריך</label><input id="date" type="date"></div>
+
+        <div class="field">
+          <label>תוצאת זיהוי מין</label>
+          <div class="sex">
+            <label><input type="radio" name="sex" value="male"> ♂ זכר</label>
+            <label><input type="radio" name="sex" value="female" checked> ♀ נקבה</label>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="primary" onclick="printCertificate()">🖨️ הדפס תעודה</button>
+          <button class="secondary" onclick="saveRecord()">💾 שמור ברשומות</button>
+          <button class="secondary" onclick="clearForm()">ניקוי</button>
+        </div>
+        <p class="note">בשלב זה הרשומות נשמרות בטלפון. חיבור ישיר ל-Google Drive ו-Google Sheets יתווסף בשלב הבא.</p>
+      </div>
+
+      <section class="preview-card">
+        <canvas id="certificate" width="1024" height="1448"></canvas>
+      </section>
+    </section>
+
+    <section id="customersScreen" class="screen">
+      <div class="card">
+        <div class="section-head">
+          <h2>ניהול לקוחות</h2>
+          <button class="primary small" onclick="openCustomerForm()">＋ לקוח חדש</button>
+        </div>
+        <input id="customerSearch" placeholder="חיפוש לפי עיר או לקוח" oninput="renderCustomers()">
+        <div id="customersList" class="list"></div>
+      </div>
+
+      <div id="customerFormCard" class="card hidden">
+        <h2 id="customerFormTitle">לקוח חדש</h2>
+        <input type="hidden" id="customerId">
+        <div class="field"><label>עיר</label><input id="customerCity"></div>
+        <div class="field"><label>שם הלקוח</label><input id="customerName"></div>
+        <div class="field"><label>טלפון</label><input id="customerPhone"></div>
+        <div class="field"><label>אימייל</label><input id="customerEmail"></div>
+        <div class="field"><label>הערות</label><textarea id="customerNotes"></textarea></div>
+        <label class="favorite-line"><input type="checkbox" id="customerFavorite"> ⭐ לקוח מועדף</label>
+        <div class="actions">
+          <button class="primary" onclick="saveCustomer()">שמור לקוח</button>
+          <button class="secondary" onclick="closeCustomerForm()">ביטול</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="historyScreen" class="screen">
+      <div class="card">
+        <div class="section-head">
+          <h2>היסטוריית בדיקות</h2>
+          <button class="secondary small" onclick="exportHistoryCsv()">ייצוא CSV</button>
+        </div>
+        <input id="historySearch" placeholder="חיפוש לפי לקוח, סוג או מספר זיהוי" oninput="renderHistory()">
+        <div id="historyList" class="list"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+</html>
