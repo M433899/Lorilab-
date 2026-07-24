@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Lori Lab">
-<title>Lori Lab Manager v3</title>
+<title>Lori Lab Manager v4</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=David+Libre:wght@400;500;700&display=swap');
 *{box-sizing:border-box}
@@ -124,10 +124,11 @@ html,body{width:210mm!important;height:297mm!important;margin:0!important;paddin
 
         <div class="actions">
           <button class="primary" onclick="printCertificate()">🖨️ הדפס תעודה</button>
-          <button class="secondary" onclick="saveRecord()">💾 שמור ברשומות</button>
+          <button class="primary" onclick="saveCertificatePdf()">💾 שמור PDF</button>
+          <button class="secondary" onclick="saveRecord()">📋 שמור ברשומות</button>
           <button class="secondary" onclick="clearForm()">ניקוי</button>
         </div>
-        <p class="note">בשלב זה הרשומות נשמרות בטלפון. חיבור ישיר ל-Google Drive ו-Google Sheets יתווסף בשלב הבא.</p>
+        <p class="note">כפתור „שמור PDF” יוצר קובץ בשם אוטומטי ופותח את שיתוף Android. בחר Google Drive ואז את תיקיית הלקוח.</p>
       </div>
 
       <section class="preview-card">
@@ -290,6 +291,116 @@ function buildCertificateFileName(){
     safeFilePart(v("description")),
     result
   ].filter(Boolean).join("-");
+}
+
+function dataUrlToBytes(dataUrl){
+  const base64 = dataUrl.split(",")[1];
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+  return bytes;
+}
+
+function textBytes(text){
+  return new TextEncoder().encode(text);
+}
+
+function concatBytes(parts){
+  const total = parts.reduce((sum,p)=>sum+p.length,0);
+  const out = new Uint8Array(total);
+  let offset=0;
+  for(const p of parts){ out.set(p,offset); offset+=p.length; }
+  return out;
+}
+
+function makeSinglePagePdf(jpegBytes, imageWidth, imageHeight){
+  // A4 portrait in PDF points.
+  const pageW = 595.28;
+  const pageH = 841.89;
+
+  const objects = [];
+  objects[1] = textBytes("<< /Type /Catalog /Pages 2 0 R >>");
+  objects[2] = textBytes("<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+  objects[3] = textBytes(
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] ` +
+    `/Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>`
+  );
+
+  const content = textBytes(`q\n${pageW} 0 0 ${pageH} 0 0 cm\n/Im0 Do\nQ\n`);
+  objects[4] = concatBytes([
+    textBytes(`<< /Length ${content.length} >>\nstream\n`),
+    content,
+    textBytes("endstream")
+  ]);
+
+  objects[5] = concatBytes([
+    textBytes(
+      `<< /Type /XObject /Subtype /Image /Width ${imageWidth} /Height ${imageHeight} ` +
+      `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`
+    ),
+    jpegBytes,
+    textBytes("\nendstream")
+  ]);
+
+  const chunks = [textBytes("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n")];
+  const offsets = [0];
+  let position = chunks[0].length;
+
+  for(let i=1;i<=5;i++){
+    offsets[i] = position;
+    const obj = concatBytes([
+      textBytes(`${i} 0 obj\n`),
+      objects[i],
+      textBytes("\nendobj\n")
+    ]);
+    chunks.push(obj);
+    position += obj.length;
+  }
+
+  const xrefOffset = position;
+  let xref = "xref\n0 6\n0000000000 65535 f \n";
+  for(let i=1;i<=5;i++){
+    xref += String(offsets[i]).padStart(10,"0") + " 00000 n \n";
+  }
+  xref += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  chunks.push(textBytes(xref));
+
+  return new Blob([concatBytes(chunks)], {type:"application/pdf"});
+}
+
+async function saveCertificatePdf(){
+  if(!validate()) return;
+  await redraw();
+
+  const filename = buildCertificateFileName() + ".pdf";
+  const jpegUrl = canvas.toDataURL("image/jpeg", 0.92);
+  const jpegBytes = dataUrlToBytes(jpegUrl);
+  const pdfBlob = makeSinglePagePdf(jpegBytes, canvas.width, canvas.height);
+
+  const file = new File([pdfBlob], filename, {type:"application/pdf"});
+
+  // Android share sheet lets the user choose Google Drive and the customer folder.
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{
+      await navigator.share({
+        files:[file],
+        title: filename
+      });
+      return;
+    }catch(err){
+      if(err && err.name === "AbortError") return;
+    }
+  }
+
+  // Fallback: normal download with the exact filename.
+  const url = URL.createObjectURL(pdfBlob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1500);
 }
 
 async function printCertificate(){
