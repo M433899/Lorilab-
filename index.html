@@ -933,7 +933,7 @@ function saveDriveSettings(){
   const rootFolderId=extractDriveFolderId(driveRootFolder.value);
   if(!clientId||!rootFolderId){alert("יש להזין Client ID וקישור לתיקיית Lori Lab");return}
   writeJson(DRIVE_CFG_KEY,{clientId,rootFolderId});
-  driveTokenClient=null; driveAccessToken="";
+  driveTokenClient=null; driveAccessToken=""; driveFolderCache.clear();
   closeDriveSettings();
   driveSyncStatus.textContent="הגדרת Drive נשמרה. כעת לחץ על סנכרון.";
 }
@@ -978,28 +978,71 @@ async function driveApi(url,options={}){
 function driveEscapeQueryName(name){
   return String(name).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
 }
+function normalizeDriveFolderName(value){
+  return String(value||"")
+    .normalize("NFC")
+    .replace(/[\u200B-\u200D\uFEFF]/g,"")
+    .replace(/\s+/g," ")
+    .trim()
+    .toLocaleLowerCase("he-IL");
+}
+const driveFolderCache=new Map();
+const driveFolderPromises=new Map();
+function driveFolderKey(parentId,name){
+  return `${parentId}::${normalizeDriveFolderName(name)}`;
+}
 async function driveFindFolder(parentId,name){
-  const params=new URLSearchParams({
-    q:`'${parentId}' in parents and name='${driveEscapeQueryName(name)}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-    fields:"files(id,name)",
-    pageSize:"10",
-    supportsAllDrives:"true",
-    includeItemsFromAllDrives:"true"
-  });
-  const res=await driveApi("https://www.googleapis.com/drive/v3/files?"+params);
-  const data=await res.json();
-  return (data.files||[])[0]||null;
+  const wanted=normalizeDriveFolderName(name);
+  let pageToken="";
+  do{
+    const params=new URLSearchParams({
+      q:`'${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields:"nextPageToken,files(id,name,createdTime)",
+      pageSize:"1000",
+      orderBy:"createdTime",
+      supportsAllDrives:"true",
+      includeItemsFromAllDrives:"true"
+    });
+    if(pageToken) params.set("pageToken",pageToken);
+    const res=await driveApi("https://www.googleapis.com/drive/v3/files?"+params);
+    const data=await res.json();
+    const matches=(data.files||[]).filter(file=>normalizeDriveFolderName(file.name)===wanted);
+    if(matches.length){
+      // אם כבר קיימות כפילויות ישנות, משתמשים תמיד בתיקייה הוותיקה ביותר.
+      matches.sort((a,b)=>String(a.createdTime||"").localeCompare(String(b.createdTime||"")));
+      return matches[0];
+    }
+    pageToken=data.nextPageToken||"";
+  }while(pageToken);
+  return null;
 }
 async function driveCreateFolder(parentId,name){
+  const cleanName=String(name||"").normalize("NFC").replace(/\s+/g," ").trim();
   const res=await driveApi("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({name,mimeType:"application/vnd.google-apps.folder",parents:[parentId]})
+    body:JSON.stringify({name:cleanName,mimeType:"application/vnd.google-apps.folder",parents:[parentId]})
   });
   return await res.json();
 }
 async function driveEnsureFolder(parentId,name){
-  return (await driveFindFolder(parentId,name)) || (await driveCreateFolder(parentId,name));
+  const key=driveFolderKey(parentId,name);
+  if(driveFolderCache.has(key)) return driveFolderCache.get(key);
+  if(driveFolderPromises.has(key)) return await driveFolderPromises.get(key);
+  const promise=(async()=>{
+    let folder=await driveFindFolder(parentId,name);
+    if(!folder){
+      folder=await driveCreateFolder(parentId,name);
+      // בדיקה חוזרת מונעת כפילות במקרה ששתי שמירות התחילו כמעט יחד.
+      const verified=await driveFindFolder(parentId,name);
+      if(verified) folder=verified;
+    }
+    driveFolderCache.set(key,folder);
+    return folder;
+  })();
+  driveFolderPromises.set(key,promise);
+  try{return await promise}
+  finally{driveFolderPromises.delete(key)}
 }
 async function driveFindPdf(parentId,name){
   const params=new URLSearchParams({

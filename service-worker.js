@@ -1,4 +1,4 @@
-const CACHE = "lori-lab-manager-v13-1-fixed";
+const CACHE = "lori-lab-manager-v13-2-no-duplicate-folders";
 const APP_SHELL = [
   "./",
   "./index.html",
