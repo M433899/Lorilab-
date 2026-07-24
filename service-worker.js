@@ -1,4 +1,4 @@
-const CACHE = "lori-lab-manager-v10-2-slash-experiment";
+const CACHE = "lori-lab-manager-v11-drive-sync";
 const APP_SHELL = [
   "./",
   "./index.html",

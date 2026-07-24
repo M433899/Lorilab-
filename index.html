@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Lori Lab">
-<title>Lori Lab Manager v10.2 ניסוי</title>
+<title>Lori Lab Manager v11.0 ניסוי</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=David+Libre:wght@400;500;700&display=swap');
 *{box-sizing:border-box}
@@ -92,7 +92,7 @@ html,body{width:210mm!important;height:297mm!important;margin:0!important;paddin
 <div class="app">
   <header class="topbar">
     <h1>Lori Lab</h1>
-    <div class="version-badge">Manager v10.2 ניסוי /</div>
+    <div class="version-badge">Manager v11.0 ניסוי /</div>
     <div class="tabs">
       <button class="tab active" data-screen="certificateScreen">תעודה חדשה</button>
       <button class="tab" data-screen="customersScreen">לקוחות</button>
@@ -152,6 +152,11 @@ html,body{width:210mm!important;height:297mm!important;margin:0!important;paddin
           <h2>ניהול לקוחות</h2>
           <button class="primary small" onclick="openCustomerForm()">＋ לקוח חדש</button>
         </div>
+        <div class="actions drive-actions">
+          <button class="primary" onclick="syncCustomersFromDrive()">☁️ סנכרן לקוחות מ־Drive</button>
+          <button class="secondary" onclick="openDriveSettings()">⚙️ הגדרת Drive</button>
+        </div>
+        <div id="driveSyncStatus" class="note">לא בוצע סנכרון מ־Drive.</div>
         <input id="customerSearch" placeholder="חיפוש לפי עיר או לקוח" oninput="renderCustomers()">
         <div id="customersList" class="list"></div>
       </div>
@@ -183,6 +188,28 @@ html,body{width:210mm!important;height:297mm!important;margin:0!important;paddin
       </div>
     </section>
   </main>
+</div>
+
+<div id="driveSettingsModal" class="table-modal hidden">
+  <div class="table-modal-card" style="max-width:620px">
+    <div class="table-modal-head">
+      <h3>הגדרת Google Drive</h3>
+      <button class="secondary small" onclick="closeDriveSettings()">✕</button>
+    </div>
+    <div class="field">
+      <label>Google OAuth Client ID</label>
+      <input id="driveClientId" dir="ltr" placeholder="...apps.googleusercontent.com">
+    </div>
+    <div class="field">
+      <label>קישור או מזהה של תיקיית Lori Lab</label>
+      <input id="driveRootFolder" dir="ltr" placeholder="https://drive.google.com/drive/folders/...">
+    </div>
+    <p class="note">האפליקציה קוראת רק שמות תיקיות: עיר ← לקוח. ההגדרה נשמרת בטלפון בלבד.</p>
+    <div class="actions">
+      <button class="primary" onclick="saveDriveSettings()">שמור הגדרה</button>
+      <button class="secondary" onclick="closeDriveSettings()">ביטול</button>
+    </div>
+  </div>
 </div>
 
 <div id="tablePreviewModal" class="table-modal hidden">
@@ -307,7 +334,7 @@ function safeFilePart(text){
     .normalize("NFC")
     .trim()
     // גרש וגרשיים בתוך שמות עבריים עלולים להשתבש בשם הקובץ באנדרואיד.
-    // גרסת ניסוי v10.2: הלוכסן / נשאר כפי שהוקלד כדי לבדוק את התנהגות Chrome ו-Drive.
+    // גרסת ניסוי v11.0: הלוכסן / נשאר כפי שהוקלד כדי לבדוק את התנהגות Chrome ו-Drive.
     .replace(/[\'׳״“”‘’]/g, "")
     .replace(/[:*?"<>|#%&{}$!@+=`~]/g, " ")
     .replace(/[‎‏‪-‮⁦-⁩]/g, "")
@@ -320,7 +347,7 @@ function buildCertificateFileName(){
   const birdType = safeFilePart(v("birdType"));
   const description = safeFilePart(v("description"));
   const idNumber = safeFilePart(v("idNumber"));
-  const details = [description, idNumber].filter(Boolean).join("_");
+  const details = [description, idNumber].filter(Boolean).join(" ");
 
   if (birdType && details) return `${birdType} (${details}) ${result}`;
   if (birdType) return `${birdType} ${result}`;
@@ -863,8 +890,104 @@ function saveCurrentRecord(showMessage=true){
 function saveRecord(){ saveCurrentRecord(true); }
 function renderHistory(){const q=(historySearch.value||"").trim().toLowerCase(),list=readJson(DB_KEYS.history,[]).filter(r=>[r.client,r.city,r.type,r.identification,r.description,r.result,r.date].join(" ").toLowerCase().includes(q));historyList.innerHTML=list.length?list.map(r=>`<div class="list-item"><div class="list-title">${escapeHtml(r.identification)} · ${escapeHtml(r.result)}</div><div class="list-sub">${escapeHtml(r.client)} · ${escapeHtml(r.city||"")} · ${escapeHtml(r.type)} · ${escapeHtml(r.date)}</div><div class="list-sub">${escapeHtml(r.description||"")}</div></div>`).join(""):'<div class="empty">אין עדיין רשומות</div>'}
 function exportHistoryCsv(){const rows=readJson(DB_KEYS.history,[]);if(!rows.length){alert("אין רשומות לייצוא");return}const all=[["תאריך","לקוח","עיר","סוג","מספר זיהוי","תיאור","תוצאה"],...rows.map(r=>[r.date,r.client,r.city,r.type,r.identification,r.description,r.result])],csv="\ufeff"+all.map(row=>row.map(x=>`"${String(x??"").replaceAll('"','""')}"`).join(",")).join("\n"),a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="LoriLab-results.csv";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
-seedCustomers();refreshSelectors();redraw();
+
+const DRIVE_CFG_KEY="loriLabDriveConfigV1";
+let driveTokenClient=null;
+let driveAccessToken="";
+
+function getDriveConfig(){return readJson(DRIVE_CFG_KEY,{clientId:"",rootFolderId:""})}
+function extractDriveFolderId(value){
+  const text=String(value||"").trim();
+  const m=text.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  return m?m[1]:text;
+}
+function openDriveSettings(){
+  const cfg=getDriveConfig();
+  driveClientId.value=cfg.clientId||"";
+  driveRootFolder.value=cfg.rootFolderId||"";
+  driveSettingsModal.classList.remove("hidden");
+}
+function closeDriveSettings(){driveSettingsModal.classList.add("hidden")}
+function saveDriveSettings(){
+  const clientId=driveClientId.value.trim();
+  const rootFolderId=extractDriveFolderId(driveRootFolder.value);
+  if(!clientId||!rootFolderId){alert("יש להזין Client ID וקישור לתיקיית Lori Lab");return}
+  writeJson(DRIVE_CFG_KEY,{clientId,rootFolderId});
+  driveTokenClient=null; driveAccessToken="";
+  closeDriveSettings();
+  driveSyncStatus.textContent="הגדרת Drive נשמרה. כעת לחץ על סנכרון.";
+}
+function setDriveStatus(text,isError=false){
+  driveSyncStatus.textContent=text;
+  driveSyncStatus.style.color=isError?"#a61b1b":"";
+}
+function requestDriveToken(clientId){
+  return new Promise((resolve,reject)=>{
+    if(!window.google?.accounts?.oauth2){reject(new Error("רכיב ההתחברות של Google עדיין לא נטען. בדוק חיבור לאינטרנט."));return}
+    driveTokenClient=google.accounts.oauth2.initTokenClient({
+      client_id:clientId,
+      scope:"https://www.googleapis.com/auth/drive.metadata.readonly",
+      callback:resp=>resp.error?reject(new Error(resp.error)):resolve(resp.access_token)
+    });
+    driveTokenClient.requestAccessToken({prompt:driveAccessToken?"":"consent"});
+  });
+}
+async function driveListFolders(parentId){
+  const out=[]; let pageToken="";
+  do{
+    const params=new URLSearchParams({
+      q:`'${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields:"nextPageToken,files(id,name)",
+      pageSize:"1000",
+      orderBy:"name",
+      supportsAllDrives:"true",
+      includeItemsFromAllDrives:"true"
+    });
+    if(pageToken)params.set("pageToken",pageToken);
+    const res=await fetch("https://www.googleapis.com/drive/v3/files?"+params,{headers:{Authorization:"Bearer "+driveAccessToken}});
+    if(res.status===401){driveAccessToken="";throw new Error("פג תוקף ההרשאה. לחץ שוב על סנכרון.")}
+    if(!res.ok){const t=await res.text();throw new Error("שגיאת Drive: "+res.status+" "+t.slice(0,160))}
+    const data=await res.json();out.push(...(data.files||[]));pageToken=data.nextPageToken||"";
+  }while(pageToken);
+  return out;
+}
+async function syncCustomersFromDrive(){
+  const cfg=getDriveConfig();
+  if(!cfg.clientId||!cfg.rootFolderId){openDriveSettings();return}
+  if(!navigator.onLine){setDriveStatus("אין חיבור לאינטרנט. הרשימה המקומית עדיין זמינה.",true);return}
+  try{
+    setDriveStatus("מתחבר ל־Google Drive…");
+    if(!driveAccessToken)driveAccessToken=await requestDriveToken(cfg.clientId);
+    setDriveStatus("קורא ערים ולקוחות…");
+    const cities=await driveListFolders(cfg.rootFolderId);
+    const imported=[];
+    for(let i=0;i<cities.length;i++){
+      const city=cities[i];
+      setDriveStatus(`קורא ${city.name} (${i+1}/${cities.length})…`);
+      const clients=await driveListFolders(city.id);
+      for(const c of clients) imported.push({city:city.name,name:c.name});
+    }
+    const existing=readJson(DB_KEYS.customers,[]);
+    const keys=new Set(existing.map(c=>(c.city+"\u0000"+c.name).toLocaleLowerCase("he")));
+    let added=0;
+    for(const x of imported){
+      const key=(x.city+"\u0000"+x.name).toLocaleLowerCase("he");
+      if(!keys.has(key)){existing.push({id:uid(),city:x.city,name:x.name,phone:"",email:"",notes:"נוסף מ־Google Drive",favorite:false,driveImported:true});keys.add(key);added++}
+    }
+    writeJson(DB_KEYS.customers,existing);
+    localStorage.setItem("loriLabDriveLastSync",new Date().toISOString());
+    refreshSelectors();renderCustomers();
+    setDriveStatus(`הסנכרון הסתיים: נמצאו ${cities.length} ערים ו־${imported.length} לקוחות; נוספו ${added} לקוחות חדשים.`);
+  }catch(err){console.error(err);setDriveStatus(err.message||"הסנכרון נכשל",true)}
+}
+function showLastDriveSync(){
+  const iso=localStorage.getItem("loriLabDriveLastSync");
+  if(iso)driveSyncStatus.textContent="סנכרון אחרון: "+new Date(iso).toLocaleString("he-IL");
+}
+
+seedCustomers();refreshSelectors();redraw();showLastDriveSync();
 </script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   window.addEventListener("load", () => {
