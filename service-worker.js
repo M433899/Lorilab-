@@ -1,4 +1,4 @@
-const CACHE = "lori-lab-manager-v11-drive-sync";
+const CACHE = "lori-lab-manager-v13-1-fixed";
 const APP_SHELL = [
   "./",
   "./index.html",
