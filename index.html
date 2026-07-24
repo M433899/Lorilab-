@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Lori Lab">
-<title>Lori Lab Manager v9.3</title>
+<title>Lori Lab Manager v10</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=David+Libre:wght@400;500;700&display=swap');
 *{box-sizing:border-box}
@@ -92,7 +92,7 @@ html,body{width:210mm!important;height:297mm!important;margin:0!important;paddin
 <div class="app">
   <header class="topbar">
     <h1>Lori Lab</h1>
-    <div class="version-badge">Manager v9</div>
+    <div class="version-badge">Manager v10</div>
     <div class="tabs">
       <button class="tab active" data-screen="certificateScreen">תעודה חדשה</button>
       <button class="tab" data-screen="customersScreen">לקוחות</button>
@@ -304,10 +304,15 @@ function hasCurrentTestData(){
 }
 function safeFilePart(text){
   return String(text || "")
+    .normalize("NFC")
     .trim()
-    .replace(/[\\/:*?"<>|#%&{}$!'@+=`~]/g, "-")
+    // גרש וגרשיים בתוך שמות עבריים עלולים להשתבש בשם הקובץ באנדרואיד.
+    // מסירים אותם בלי להכניס מקף, כך "גריין צ'ק" נשמר כ־"גריין צק".
+    .replace(/[\'׳״“”‘’]/g, "")
+    .replace(/[\/:*?"<>|#%&{}$!@+=`~]/g, " ")
+    .replace(/[‎‏‪-‮⁦-⁩]/g, "")
     .replace(/\s+/g, " ")
-    .replace(/-+/g, "-");
+    .trim();
 }
 
 function buildCertificateFileName(){
@@ -318,7 +323,7 @@ function buildCertificateFileName(){
     safeFilePart(v("description")),
     result
   ].filter(Boolean);
-  return parts.join("-") || `תעודה-${result}`;
+  return parts.join("_") || `תעודה_${result}`;
 }
 
 function dataUrlToBytes(dataUrl){
@@ -454,8 +459,9 @@ async function loadTableLogo(){
 }
 
 function makeMultiPagePdf(pageImages, pageWidth, pageHeight){
-  const pageW = 841.89;
-  const pageH = 595.28;
+  // A4 לאורך (Portrait) — לא רוחב.
+  const pageW = 595.28;
+  const pageH = 841.89;
   const objects = {};
   let objNo = 1;
 
@@ -721,7 +727,7 @@ async function createClientTablePdf(){
 
   const pageJpegs=pages.map(c=>dataUrlToBytes(c.toDataURL("image/jpeg",0.98)));
   currentTablePdfBlob=makeMultiPagePdf(pageJpegs,pageW,pageH);
-  currentTablePdfName=`טבלה-${safeFilePart(clientName)}-${fDate(chosenDate).replaceAll("/","-")}.pdf`;
+  currentTablePdfName=`טבלה_${safeFilePart(clientName).replace(/\s+/g,"_")}_${fDate(chosenDate).replaceAll("/","-")}.pdf`;
 
   document.getElementById("tablePreviewModal").classList.remove("hidden");
   document.body.style.overflow="hidden";
