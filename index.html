@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Lori Lab">
-<title>Lori Lab Manager v8</title>
+<title>Lori Lab Manager v9.3</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=David+Libre:wght@400;500;700&display=swap');
 *{box-sizing:border-box}
@@ -43,7 +43,8 @@ canvas{display:block;width:100%;height:auto;background:white;box-shadow:0 6px 20
 }
 
 .topbar{background:#fff;border-radius:16px;padding:14px;margin-bottom:14px;box-shadow:0 6px 20px rgba(0,0,0,.1)}
-.topbar h1{margin:0 0 12px;text-align:center;color:var(--green);font-size:28px}
+.topbar h1{margin:0 0 4px;text-align:center;color:var(--green);font-size:28px}
+.version-badge{text-align:center;font:700 13px Arial,sans-serif;color:#7b6a2e;margin-bottom:12px}
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .tab{background:#e8efe9;color:var(--green);padding:10px 6px;font-size:15px}
 .tab.active{background:var(--green);color:#fff}
@@ -64,7 +65,7 @@ select{width:100%;border:1px solid #b8c6bd;border-radius:10px;padding:12px;font-
 .favorite-line{display:flex;align-items:center;gap:8px;margin:8px 0 4px}
 .favorite-line input{width:auto}
 .empty{padding:20px;text-align:center;color:#6f7d73}
-@media(max-width:480px){.grid2{grid-template-columns:1fr}.tabs{grid-template-columns:1fr 1fr 1fr}.tab{font-size:13px}}
+@media(max-width:480px){.grid2{grid-template-columns:1fr}.tabs{grid-template-columns:1fr 1fr 1fr}.tab{font-size:13px}.actions{grid-template-columns:1fr}.table-modal{padding:4px}.table-modal-card{margin:4px auto;padding:8px}.table-modal-head{font-size:17px}}
 @media print{
   .topbar,.screen:not(#certificateScreen),#certificateScreen>.card{display:none!important}
   #certificateScreen{display:block!important}
@@ -91,6 +92,7 @@ html,body{width:210mm!important;height:297mm!important;margin:0!important;paddin
 <div class="app">
   <header class="topbar">
     <h1>Lori Lab</h1>
+    <div class="version-badge">Manager v9</div>
     <div class="tabs">
       <button class="tab active" data-screen="certificateScreen">תעודה חדשה</button>
       <button class="tab" data-screen="customersScreen">לקוחות</button>
@@ -293,12 +295,12 @@ imgs.female.onload=redraw;
 imgs.male.onload=redraw;
 
 function validate(){
-  const ids=["owner","sender","birdType","idNumber","description","date"];
-  if(ids.some(id=>!document.getElementById(id).value.trim())){
-    alert("אנא מלא את כל השדות");
-    return false;
-  }
+  // שדות התעודה אינם שדות חובה. ניתן להפיק תעודה גם כשחלק מהמידע אינו ידוע.
   return true;
+}
+
+function hasCurrentTestData(){
+  return ["birdType","idNumber","description"].some(id=>v(id));
 }
 function safeFilePart(text){
   return String(text || "")
@@ -310,12 +312,13 @@ function safeFilePart(text){
 
 function buildCertificateFileName(){
   const result = getSex() === "male" ? "זכר" : "נקבה";
-  return [
+  const parts = [
     safeFilePart(v("birdType")),
     safeFilePart(v("idNumber")),
     safeFilePart(v("description")),
     result
-  ].filter(Boolean).join("-");
+  ].filter(Boolean);
+  return parts.join("-") || `תעודה-${result}`;
 }
 
 function dataUrlToBytes(dataUrl){
@@ -438,12 +441,13 @@ let currentTablePdfName = "";
 
 function closeTablePreview(){
   document.getElementById("tablePreviewModal").classList.add("hidden");
+  document.body.style.overflow="";
 }
 
 async function loadTableLogo(){
   return await new Promise((resolve,reject)=>{
     const img = new Image();
-    img.onload=()=>resolve(img);
+    img.onload=async()=>{try{if(img.decode)await img.decode()}catch(e){} resolve(img)};
     img.onerror=reject;
     img.src="./table-logo.webp";
   });
@@ -548,7 +552,8 @@ async function createClientTablePdf(){
   if(!chosenDate){alert("יש לבחור תאריך");return;}
   if(!clientName){alert("יש לבחור לקוח או למלא שם שולח");return;}
 
-  if(validate()) saveCurrentRecord(false);
+  // הטופס הנוכחי יצורף רק כאשר הוזן בו לפחות פרט אחד של הבדיקה.
+  if(hasCurrentTestData()) saveCurrentRecord(false);
 
   const rows=readJson(DB_KEYS.history,[])
     .filter(r=>r.date===chosenDate&&r.client===clientName)
@@ -558,126 +563,154 @@ async function createClientTablePdf(){
 
   const maleCount=rows.filter(r=>r.result==="זכר").length;
   const femaleCount=rows.filter(r=>r.result==="נקבה").length;
-  const reportNo=`${chosenDate.slice(0,4)}-${String(rows.length).padStart(4,"0")}`;
+  const reportNo=`LL-${chosenDate.replaceAll("-","")}-${String(rows.length).padStart(3,"0")}`;
 
   const pageW=1754,pageH=1240;
-  const rowsPerPage=15;
+  const rowsPerPage=12;
+  const totalPages=Math.ceil(rows.length/rowsPerPage);
   const pages=[];
   const logo=await loadTableLogo().catch(()=>null);
+  const shown=value=>String(value||"").trim()||"—";
 
-  for(let pageIndex=0;pageIndex<Math.ceil(rows.length/rowsPerPage);pageIndex++){
+  const drawInfoCard=(x,px,py,pw,ph,label,value,valueColor="#174b31")=>{
+    x.save();
+    x.shadowColor="rgba(13,64,43,.10)";x.shadowBlur=14;x.shadowOffsetY=5;
+    drawRoundedRect(x,px,py,pw,ph,18,"#ffffff",null);
+    x.restore();
+    x.lineWidth=2;drawRoundedRect(x,px,py,pw,ph,18,null,"#d8bd63");
+    x.textAlign="right";
+    x.fillStyle="#758078";
+    x.font='700 19px "David Libre", David, serif';
+    x.fillText(label,px+pw-24,py+25);
+    x.fillStyle=valueColor;
+    const size=fitText(x,shown(value),pw-48,29,17,700);
+    x.font=`700 ${size}px "David Libre", David, serif`;
+    x.fillText(shown(value),px+pw-24,py+62,pw-48);
+  };
+
+  const drawCenteredStat=(x,px,py,pw,label,value,valueColor)=>{
+    x.save();
+    x.shadowColor="rgba(13,64,43,.09)";x.shadowBlur=12;x.shadowOffsetY=4;
+    drawRoundedRect(x,px,py,pw,92,18,"#ffffff",null);
+    x.restore();
+    x.lineWidth=2;drawRoundedRect(x,px,py,pw,92,18,null,"#d8bd63");
+    x.textAlign="center";
+    x.fillStyle="#69766e";x.font='700 18px "David Libre", David, serif';
+    x.fillText(label,px+pw/2,py+25);
+    x.fillStyle=valueColor;x.font='700 34px "David Libre", David, serif';
+    x.fillText(String(value),px+pw/2,py+63);
+  };
+
+  const drawCellText=(x,text,x0,y,w,h,align="center",color="#17231c",weight=500)=>{
+    const value=shown(text);
+    x.fillStyle=color;
+    const lines=wrapCanvasText(x,value,w-26).slice(0,2);
+    let size=fitText(x,lines.reduce((a,b)=>a.length>b.length?a:b,""),w-26,21,14,weight);
+    x.font=`${weight} ${size}px "David Libre", David, serif`;
+    x.textAlign=align;
+    const tx=align==="right"?x0+w-14:align==="left"?x0+14:x0+w/2;
+    const lineGap=size+4;
+    const startY=y+h/2-((lines.length-1)*lineGap)/2;
+    lines.forEach((line,i)=>x.fillText(line,tx,startY+i*lineGap,w-26));
+  };
+
+  for(let pageIndex=0;pageIndex<totalPages;pageIndex++){
     const slice=rows.slice(pageIndex*rowsPerPage,(pageIndex+1)*rowsPerPage);
     const c=document.createElement("canvas");
     c.width=pageW;c.height=pageH;
     const x=c.getContext("2d");
-    x.fillStyle="#fff";x.fillRect(0,0,pageW,pageH);
+    x.fillStyle="#fbfcfb";x.fillRect(0,0,pageW,pageH);
     x.direction="rtl";x.textBaseline="middle";
 
-    // Watermark
+    // מסגרת עמוד וסרט מותג עליון.
+    x.strokeStyle="#d8c27a";x.lineWidth=3;x.strokeRect(32,32,pageW-64,pageH-64);
+    x.fillStyle="#064c35";x.fillRect(32,32,pageW-64,16);
+    x.fillStyle="#c9a12d";x.fillRect(32,48,pageW-64,6);
+
+    // סימן מים עדין מאחורי הטבלה.
     if(logo){
-      x.save();
-      x.globalAlpha=0.055;
-      const ratio=Math.min(720/logo.width,520/logo.height);
+      x.save();x.globalAlpha=0.035;
+      const ratio=Math.min(720/logo.width,500/logo.height);
       const ww=logo.width*ratio,hh=logo.height*ratio;
-      x.drawImage(logo,(pageW-ww)/2,(pageH-hh)/2+40,ww,hh);
+      x.drawImage(logo,(pageW-ww)/2,530,ww,hh);
       x.restore();
     }
 
-    // Green/gold top ribbon
-    x.fillStyle="#064c35";
-    x.beginPath();x.moveTo(0,0);x.lineTo(680,0);x.quadraticCurveTo(500,70,0,115);x.closePath();x.fill();
-    x.strokeStyle="#d5a72d";x.lineWidth=14;
-    x.beginPath();x.moveTo(0,92);x.quadraticCurveTo(420,55,680,0);x.stroke();
-
-    // Logo
+    // לוגו וכותרת.
     if(logo){
-      const ratio=Math.min(390/logo.width,175/logo.height);
+      const ratio=Math.min(370/logo.width,145/logo.height);
       const ww=logo.width*ratio,hh=logo.height*ratio;
-      x.drawImage(logo,(pageW-ww)/2,20,ww,hh);
+      x.drawImage(logo,(pageW-ww)/2,55,ww,hh);
     }
+    x.textAlign="center";x.fillStyle="#064c35";
+    x.font='700 54px "David Libre", David, serif';
+    x.fillText("בדיקות מין לתוכים",pageW/2,218);
+    x.fillStyle="#8b6b18";x.font='500 23px "David Libre", David, serif';
+    x.fillText("דו״ח מסכם – בדיקות PCR לזיהוי מין",pageW/2,260);
 
-    // Report number
-    drawRoundedRect(x,1425,52,260,92,18,"#fff","#c59a28");
-    x.fillStyle="#174b31";x.textAlign="center";
-    x.font='700 22px "David Libre", David, serif';
-    x.fillText("Report No.",1555,78);
-    x.font='700 26px "David Libre", David, serif';
-    x.fillText(reportNo,1555,112);
+    drawInfoCard(x,1380,70,300,98,"מספר דוח",reportNo);
+    drawInfoCard(x,1030,295,650,92,"לקוח",clientName);
+    drawInfoCard(x,70,295,350,92,"תאריך",fDate(chosenDate));
+    drawCenteredStat(x,455,295,170,"זכרים",maleCount,"#1f5fc4");
+    drawCenteredStat(x,645,295,170,"נקבות",femaleCount,"#d32657");
+    drawCenteredStat(x,835,295,170,"סה״כ",rows.length,"#174b31");
 
-    // Title
-    x.fillStyle="#064c35";x.textAlign="center";
-    x.font='700 56px "David Libre", David, serif';
-    x.fillText("בדיקות מין לתוכים",pageW/2,220);
-
-    // Summary box
-    drawRoundedRect(x,70,90,330,165,18,"#fff","#c59a28");
-    x.textAlign="right";
-    x.font='700 25px "David Libre", David, serif';
-    x.fillStyle="#1746c7";x.fillText(`סה״כ זכרים: ${maleCount}`,360,125);
-    x.fillStyle="#d02020";x.fillText(`סה״כ נקבות: ${femaleCount}`,360,175);
-    x.fillStyle="#174b31";x.fillText(`סה״כ בדיקות: ${rows.length}`,360,225);
-
-    // Client/date cards
-    drawRoundedRect(x,1325,170,360,88,16,"#fff","#c59a28");
-    x.textAlign="right";x.fillStyle="#174b31";
-    x.font='700 24px "David Libre", David, serif';
-    x.fillText(`לקוח: ${clientName}`,1650,214);
-
-    drawRoundedRect(x,70,280,360,82,16,"#fff","#c59a28");
-    x.textAlign="right";
-    x.fillText(`תאריך: ${fDate(chosenDate)}`,395,321);
-
-    // Table
-    const left=70,top=390,tableWidth=1615,headerH=55,rowH=45;
-    const colWidths=[85,350,360,500,320];
-    const headers=["מס׳","סוג תוכי","תיאור","מס׳ זיהוי","מין"];
+    // טבלת תוצאות – פריסה מלאה, ריווח מוגדל ושתי שורות טקסט בעת הצורך.
+    const left=70,top=425,tableWidth=1610,headerH=62,rowH=51;
+    const columns=[
+      {key:"index",label:"מס׳",width:90,align:"center"},
+      {key:"type",label:"סוג",width:330,align:"center"},
+      {key:"description",label:"תיאור",width:490,align:"right"},
+      {key:"identification",label:"מספר זיהוי",width:430,align:"center"},
+      {key:"result",label:"מין",width:270,align:"center"}
+    ];
 
     drawRoundedRect(x,left,top,tableWidth,headerH,14,"#064c35","#064c35");
-    let rightEdge=left+tableWidth;
-    x.textAlign="center";x.fillStyle="#fff";
-    x.font='700 26px "David Libre", David, serif';
-    for(let i=0;i<headers.length;i++){
-      const w=colWidths[i],x0=rightEdge-w;
-      x.strokeStyle="rgba(255,255,255,.45)";x.strokeRect(x0,top,w,headerH);
-      x.fillText(headers[i],x0+w/2,top+headerH/2);
-      rightEdge=x0;
-    }
+    let cursor=left+tableWidth;
+    x.font='700 25px "David Libre", David, serif';x.fillStyle="#fff";x.textAlign="center";
+    columns.forEach((col,i)=>{
+      const x0=cursor-col.width;
+      if(i>0){x.strokeStyle="rgba(255,255,255,.38)";x.lineWidth=1;x.beginPath();x.moveTo(cursor,top+8);x.lineTo(cursor,top+headerH-8);x.stroke();}
+      x.fillText(col.label,x0+col.width/2,top+headerH/2);
+      cursor=x0;
+    });
 
     let y=top+headerH;
     slice.forEach((r,idx)=>{
       const globalIndex=pageIndex*rowsPerPage+idx+1;
-      const values=[String(globalIndex),r.type||"",r.description||"",r.identification||"",r.result||""];
-      x.fillStyle=idx%2===0?"#ffffff":"#f1f6f2";
+      const values={index:String(globalIndex),type:r.type,description:r.description,identification:r.identification,result:r.result};
+      x.fillStyle=idx%2===0?"rgba(255,255,255,.95)":"rgba(238,246,240,.95)";
       x.fillRect(left,y,tableWidth,rowH);
-      x.strokeStyle="#c8d1ca";x.strokeRect(left,y,tableWidth,rowH);
+      x.strokeStyle="#c7d3ca";x.lineWidth=1;x.strokeRect(left,y,tableWidth,rowH);
 
-      rightEdge=left+tableWidth;
-      for(let i=0;i<values.length;i++){
-        const w=colWidths[i],x0=rightEdge-w;
-        x.strokeRect(x0,y,w,rowH);
-        x.textAlign=(i===2||i===3)?"left":"center";
-        x.fillStyle=i===4?(values[i]==="זכר"?"#1746c7":"#d02020"):"#111";
-        const sz=fitText(x,values[i],w-22,i===4?23:22,15,i===4?700:500);
-        x.font=`${i===4?700:500} ${sz}px "David Libre", David, serif`;
-        const tx=(i===2||i===3)?x0+12:x0+w/2;
-        x.fillText(values[i],tx,y+rowH/2,w-20);
-        rightEdge=x0;
-      }
+      cursor=left+tableWidth;
+      columns.forEach((col,i)=>{
+        const x0=cursor-col.width;
+        if(i>0){x.beginPath();x.moveTo(cursor,y);x.lineTo(cursor,y+rowH);x.stroke();}
+        const value=values[col.key];
+        const isResult=col.key==="result";
+        const color=isResult?(value==="זכר"?"#1f5fc4":value==="נקבה"?"#d32657":"#17231c"):"#17231c";
+        drawCellText(x,value,x0,y,col.width,rowH,col.align,color,isResult?700:500);
+        cursor=x0;
+      });
       y+=rowH;
     });
 
-    // Footer
-    x.strokeStyle="#c59a28";x.lineWidth=2;
-    x.beginPath();x.moveTo(70,1130);x.lineTo(1685,1130);x.stroke();
-    x.textAlign="center";x.fillStyle="#174b31";
-    x.font='500 22px "David Libre", David, serif';
-    x.fillText("055-5710210",520,1170);
-    x.fillText("LoriLab2025@gmail.com",930,1170);
-    x.fillText("ישראל",1395,1170);
-    x.fillStyle="#666";x.font='500 16px Arial';
-    x.fillText("This summary is based on individual PCR reports issued by Lori Lab.",pageW/2,1205);
+    // קו סיום לטבלה ללא שורות ריקות מיותרות.
+    x.strokeStyle="#064c35";x.lineWidth=3;
+    x.beginPath();x.moveTo(left,y);x.lineTo(left+tableWidth,y);x.stroke();
+
+    // תחתית מקצועית.
+    x.strokeStyle="#c9a12d";x.lineWidth=2;
+    x.beginPath();x.moveTo(70,1124);x.lineTo(1680,1124);x.stroke();
+    x.textAlign="center";x.fillStyle="#174b31";x.font='500 22px "David Libre", David, serif';
+    x.fillText("055-5710210",475,1162);
+    x.fillText("LoriLab2025@gmail.com",890,1162);
+    x.fillText("ישראל",1370,1162);
+    x.fillStyle="#6d756f";x.font='500 16px Arial';
+    x.fillText("Lori Lab · PCR Sex Identification Summary",pageW/2,1198);
     x.textAlign="right";x.font='500 18px "David Libre", David, serif';
-    x.fillText(`עמוד ${pageIndex+1} מתוך ${Math.ceil(rows.length/rowsPerPage)}`,1660,1205);
+    x.fillText(`עמוד ${pageIndex+1} מתוך ${totalPages}`,1650,1198);
 
     pages.push(c);
   }
@@ -686,11 +719,12 @@ async function createClientTablePdf(){
   holder.innerHTML="";
   pages.forEach(c=>holder.appendChild(c));
 
-  const pageJpegs=pages.map(c=>dataUrlToBytes(c.toDataURL("image/jpeg",0.95)));
+  const pageJpegs=pages.map(c=>dataUrlToBytes(c.toDataURL("image/jpeg",0.98)));
   currentTablePdfBlob=makeMultiPagePdf(pageJpegs,pageW,pageH);
   currentTablePdfName=`טבלה-${safeFilePart(clientName)}-${fDate(chosenDate).replaceAll("/","-")}.pdf`;
 
   document.getElementById("tablePreviewModal").classList.remove("hidden");
+  document.body.style.overflow="hidden";
 }
 
 async function saveCurrentTablePdf(){
@@ -706,7 +740,7 @@ async function saveCertificatePdf(){
   await redraw();
 
   const filename = buildCertificateFileName() + ".pdf";
-  const jpegUrl = canvas.toDataURL("image/jpeg", 0.92);
+  const jpegUrl = canvas.toDataURL("image/jpeg", 0.98);
   const jpegBytes = dataUrlToBytes(jpegUrl);
   const pdfBlob = makeSinglePagePdf(jpegBytes, canvas.width, canvas.height);
 
@@ -793,8 +827,15 @@ function currentRecord(){
   };
 }
 function saveCurrentRecord(showMessage=true){
-  if(!validate()) return false;
   const r=currentRecord();
+  if(!r.date){
+    if(showMessage) alert("יש לבחור תאריך");
+    return false;
+  }
+  if(!r.client){
+    if(showMessage) alert("יש לבחור לקוח או למלא שם שולח");
+    return false;
+  }
   const list=readJson(DB_KEYS.history,[]);
   const duplicate=list.some(x =>
     x.date===r.date &&
@@ -819,7 +860,7 @@ seedCustomers();refreshSelectors();redraw();
 <script>
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js").catch(console.error);
+    navigator.serviceWorker.register("./service-worker.js",{updateViaCache:"none"}).then(r=>r.update()).catch(console.error);
   });
 }
 </script>
