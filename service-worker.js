@@ -1,4 +1,4 @@
-const CACHE = "lori-lab-manager-v10-1-certificate-filename";
+const CACHE = "lori-lab-manager-v10-2-slash-experiment";
 const APP_SHELL = [
   "./",
   "./index.html",
