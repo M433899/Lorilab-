@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Lori Lab">
-<title>Lori Lab – הדפסת תעודה v4</title>
+<title>Lori Lab Manager v3</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=David+Libre:wght@400;500;700&display=swap');
 *{box-sizing:border-box}
@@ -274,10 +274,38 @@ function validate(){
   }
   return true;
 }
+function safeFilePart(text){
+  return String(text || "")
+    .trim()
+    .replace(/[\\/:*?"<>|#%&{}$!'@+=`~]/g, "-")
+    .replace(/\s+/g, " ")
+    .replace(/-+/g, "-");
+}
+
+function buildCertificateFileName(){
+  const result = getSex() === "male" ? "זכר" : "נקבה";
+  return [
+    safeFilePart(v("birdType")),
+    safeFilePart(v("idNumber")),
+    safeFilePart(v("description")),
+    result
+  ].filter(Boolean).join("-");
+}
+
 async function printCertificate(){
   if(!validate()) return;
   await redraw();
-  setTimeout(()=>window.print(),250);
+
+  const originalTitle = document.title;
+  const fileName = buildCertificateFileName();
+  document.title = fileName;
+
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1200);
+  }, 250);
 }
 function saveForm(){
   const data={
