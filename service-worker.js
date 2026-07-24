@@ -1,4 +1,4 @@
-const CACHE = "lori-lab-manager-v13-2-no-duplicate-folders";
+const CACHE = "lori-lab-v13-3-drive-folder-id";
 const APP_SHELL = [
   "./",
   "./index.html",

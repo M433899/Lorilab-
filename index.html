@@ -788,7 +788,7 @@ async function saveCertificatePdf(){
   if(city && client && certificateDate && cfg.rootFolderId){
     try{
       setDriveStatus("שומר את התעודה אוטומטית ב־Google Drive…");
-      await uploadCertificateToDrive(pdfBlob, filename, city, client, certificateDate);
+      await uploadCertificateToDrive(pdfBlob, filename, city, client, certificateDate, selectedCustomer);
       setDriveStatus(`נשמר ב־Drive: ${city} ← ${client} ← ${fDate(certificateDate)}`);
       alert(`התעודה נשמרה בהצלחה ב־Google Drive\n${city} ← ${client} ← ${fDate(certificateDate)}`);
       return;
@@ -980,11 +980,19 @@ function driveEscapeQueryName(name){
 }
 function normalizeDriveFolderName(value){
   return String(value||"")
-    .normalize("NFC")
-    .replace(/[\u200B-\u200D\uFEFF]/g,"")
+    .normalize("NFKD")
+    // הסרת סימני כיוון, תווים נסתרים, ניקוד ערבי/עברי וטטוויל.
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g,"")
+    .replace(/[\u0591-\u05C7\u0610-\u061A\u0640\u064B-\u065F\u0670\u06D6-\u06ED]/g,"")
+    // איחוד וריאציות נפוצות באותיות ערביות לצורך השוואת שמות בלבד.
+    .replace(/[أإآٱ]/g,"ا")
+    .replace(/[ى]/g,"ي")
+    .replace(/[ؤ]/g,"و")
+    .replace(/[ئ]/g,"ي")
+    .replace(/ة/g,"ه")
     .replace(/\s+/g," ")
     .trim()
-    .toLocaleLowerCase("he-IL");
+    .toLocaleLowerCase("ar");
 }
 const driveFolderCache=new Map();
 const driveFolderPromises=new Map();
@@ -1077,13 +1085,29 @@ async function driveUploadPdf(parentId,filename,pdfBlob){
   });
   return await res.json();
 }
-async function uploadCertificateToDrive(pdfBlob,filename,city,client,certificateDate){
+async function uploadCertificateToDrive(pdfBlob,filename,city,client,certificateDate,customerRecord=null){
   const cfg=getDriveConfig();
   if(!cfg.clientId || !cfg.rootFolderId) throw new Error("חסרה הגדרת Google Drive.");
   if(!navigator.onLine) throw new Error("אין חיבור לאינטרנט.");
   if(!driveAccessToken) driveAccessToken=await requestDriveToken(cfg.clientId);
-  const cityFolder=await driveEnsureFolder(cfg.rootFolderId,city);
-  const clientFolder=await driveEnsureFolder(cityFolder.id,client);
+
+  // ללקוח שסונכרן מ-Drive משתמשים ישירות במזהי התיקיות, ולא מחפשים לפי שם.
+  let cityFolder = customerRecord?.driveCityFolderId ? {id:customerRecord.driveCityFolderId,name:city} : null;
+  let clientFolder = customerRecord?.driveFolderId ? {id:customerRecord.driveFolderId,name:client} : null;
+  if(!cityFolder) cityFolder=await driveEnsureFolder(cfg.rootFolderId,city);
+  if(!clientFolder) clientFolder=await driveEnsureFolder(cityFolder.id,client);
+
+  // שומרים את המזהים ברשומת הלקוח כדי שכל שמירה עתידית תגיע לאותה תיקייה בוודאות.
+  if(customerRecord?.id && (!customerRecord.driveCityFolderId || !customerRecord.driveFolderId)){
+    const customers=readJson(DB_KEYS.customers,[]);
+    const idx=customers.findIndex(c=>c.id===customerRecord.id);
+    if(idx>=0){
+      customers[idx].driveCityFolderId=cityFolder.id;
+      customers[idx].driveFolderId=clientFolder.id;
+      writeJson(DB_KEYS.customers,customers);
+    }
+  }
+
   const dateFolder=await driveEnsureFolder(clientFolder.id,fDate(certificateDate));
   return await driveUploadPdf(dateFolder.id,filename,pdfBlob);
 }
@@ -1115,25 +1139,46 @@ async function syncCustomersFromDrive(){
     setDriveStatus("מתחבר ל־Google Drive… אם מופיעה אזהרת Google, לחץ על המשך.");
     if(!driveAccessToken)driveAccessToken=await requestDriveToken(cfg.clientId);
     setDriveStatus("קורא ערים ולקוחות…");
-    const cities=await driveListFolders(cfg.rootFolderId);
+    const allCities=await driveListFolders(cfg.rootFolderId);
+    // במקרה שכבר יש כפילויות ישנות, משתמשים בתיקייה הוותיקה/הראשונה לכל שם מנורמל.
+    const cityMap=new Map();
+    for(const city of allCities){
+      const key=normalizeDriveFolderName(city.name);
+      if(!cityMap.has(key)) cityMap.set(key,city);
+    }
+    const cities=[...cityMap.values()];
     const imported=[];
     for(let i=0;i<cities.length;i++){
       const city=cities[i];
       setDriveStatus(`קורא ${city.name} (${i+1}/${cities.length})…`);
-      const clients=await driveListFolders(city.id);
-      for(const c of clients) imported.push({city:city.name,name:c.name});
+      const allClients=await driveListFolders(city.id);
+      const clientMap=new Map();
+      for(const c of allClients){
+        const key=normalizeDriveFolderName(c.name);
+        if(!clientMap.has(key)) clientMap.set(key,c);
+      }
+      for(const c of clientMap.values()) imported.push({city:city.name,name:c.name,driveCityFolderId:city.id,driveFolderId:c.id});
     }
     const existing=readJson(DB_KEYS.customers,[]);
-    const keys=new Set(existing.map(c=>(c.city+"\u0000"+c.name).toLocaleLowerCase("he")));
-    let added=0;
+    const byKey=new Map(existing.map((c,i)=>[normalizeDriveFolderName(c.city)+"\u0000"+normalizeDriveFolderName(c.name),i]));
+    let added=0,linked=0;
     for(const x of imported){
-      const key=(x.city+"\u0000"+x.name).toLocaleLowerCase("he");
-      if(!keys.has(key)){existing.push({id:uid(),city:x.city,name:x.name,phone:"",email:"",notes:"נוסף מ־Google Drive",favorite:false,driveImported:true});keys.add(key);added++}
+      const key=normalizeDriveFolderName(x.city)+"\u0000"+normalizeDriveFolderName(x.name);
+      const idx=byKey.get(key);
+      if(idx===undefined){
+        existing.push({id:uid(),city:x.city,name:x.name,phone:"",email:"",notes:"נוסף מ־Google Drive",favorite:false,driveImported:true,driveCityFolderId:x.driveCityFolderId,driveFolderId:x.driveFolderId});
+        byKey.set(key,existing.length-1);added++;
+      }else{
+        if(existing[idx].driveCityFolderId!==x.driveCityFolderId || existing[idx].driveFolderId!==x.driveFolderId) linked++;
+        existing[idx].driveCityFolderId=x.driveCityFolderId;
+        existing[idx].driveFolderId=x.driveFolderId;
+      }
     }
     writeJson(DB_KEYS.customers,existing);
+    driveFolderCache.clear();
     localStorage.setItem("loriLabDriveLastSync",new Date().toISOString());
     refreshSelectors();renderCustomers();
-    setDriveStatus(`הסנכרון הסתיים: נמצאו ${cities.length} ערים ו־${imported.length} לקוחות; נוספו ${added} לקוחות חדשים.`);
+    setDriveStatus(`הסנכרון הסתיים: נמצאו ${cities.length} ערים ו־${imported.length} לקוחות; נוספו ${added}, קושרו לתיקיות קיימות ${linked}.`);
   }catch(err){console.error(err);setDriveStatus(err.message||"הסנכרון נכשל",true)}
 }
 function showLastDriveSync(){
