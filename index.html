@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Lori Lab">
-<title>Lori Lab Manager v4</title>
+<title>Lori Lab Manager v6</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=David+Libre:wght@400;500;700&display=swap');
 *{box-sizing:border-box}
@@ -125,10 +125,11 @@ html,body{width:210mm!important;height:297mm!important;margin:0!important;paddin
         <div class="actions">
           <button class="primary" onclick="printCertificate()">🖨️ הדפס תעודה</button>
           <button class="primary" onclick="saveCertificatePdf()">💾 שמור PDF</button>
+          <button class="primary" onclick="createClientTablePdf()">📊 טבלה</button>
           <button class="secondary" onclick="saveRecord()">📋 שמור ברשומות</button>
           <button class="secondary" onclick="clearForm()">ניקוי</button>
         </div>
-        <p class="note">כפתור „שמור PDF” יוצר קובץ בשם אוטומטי ופותח את שיתוף Android. בחר Google Drive ואז את תיקיית הלקוח.</p>
+        <p class="note">כפתור „טבלה” יוצר PDF מסכם לכל התעודות השמורות של הלקוח באותו תאריך.</p>
       </div>
 
       <section class="preview-card">
@@ -368,31 +369,34 @@ function makeSinglePagePdf(jpegBytes, imageWidth, imageHeight){
   return new Blob([concatBytes(chunks)], {type:"application/pdf"});
 }
 
-async function saveCertificatePdf(){
-  if(!validate()) return;
-  await redraw();
 
-  const filename = buildCertificateFileName() + ".pdf";
-  const jpegUrl = canvas.toDataURL("image/jpeg", 0.92);
-  const jpegBytes = dataUrlToBytes(jpegUrl);
-  const pdfBlob = makeSinglePagePdf(jpegBytes, canvas.width, canvas.height);
+function wrapCanvasText(ctx, text, maxWidth){
+  const words = String(text || "").split(/\s+/);
+  const lines = [];
+  let line = "";
+  for(const word of words){
+    const test = line ? line + " " + word : word;
+    if(ctx.measureText(test).width > maxWidth && line){
+      lines.push(line);
+      line = word;
+    }else{
+      line = test;
+    }
+  }
+  if(line) lines.push(line);
+  return lines.length ? lines : [""];
+}
 
+async function shareOrDownloadPdf(pdfBlob, filename){
   const file = new File([pdfBlob], filename, {type:"application/pdf"});
-
-  // Android share sheet lets the user choose Google Drive and the customer folder.
   if(navigator.canShare && navigator.canShare({files:[file]})){
     try{
-      await navigator.share({
-        files:[file],
-        title: filename
-      });
+      await navigator.share({files:[file], title:filename});
       return;
     }catch(err){
       if(err && err.name === "AbortError") return;
     }
   }
-
-  // Fallback: normal download with the exact filename.
   const url = URL.createObjectURL(pdfBlob);
   const a = document.createElement("a");
   a.href = url;
@@ -400,7 +404,173 @@ async function saveCertificatePdf(){
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url), 1500);
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+
+async function createClientTablePdf(){
+  const chosenDate = document.getElementById("date").value;
+  const selectedCustomer = readJson(DB_KEYS.customers,[]).find(x=>x.id===clientSelect.value);
+  const clientName = selectedCustomer?.name || v("sender");
+
+  if(!chosenDate){
+    alert("יש לבחור תאריך");
+    return;
+  }
+  if(!clientName){
+    alert("יש לבחור לקוח או למלא שם שולח");
+    return;
+  }
+
+  // Include the current certificate automatically if it is complete.
+  if(validate()) saveCurrentRecord(false);
+
+  const rows = readJson(DB_KEYS.history,[])
+    .filter(r => r.date===chosenDate && r.client===clientName)
+    .sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""));
+
+  if(!rows.length){
+    alert("לא נמצאו תעודות שמורות ללקוח בתאריך שנבחר");
+    return;
+  }
+
+  const c = document.createElement("canvas");
+  c.width = 1240;
+  c.height = 1754;
+  const x = c.getContext("2d");
+
+  x.fillStyle = "#ffffff";
+  x.fillRect(0,0,c.width,c.height);
+  x.direction = "rtl";
+  x.textBaseline = "middle";
+
+  // Lori Lab logo
+  const logo = new Image();
+  logo.src = "./icon-512.webp";
+  try{
+    await new Promise((resolve,reject)=>{
+      logo.onload=resolve;
+      logo.onerror=reject;
+    });
+    x.drawImage(logo, 55, 35, 165, 165);
+  }catch(e){}
+
+  // Main title
+  x.fillStyle = "#111111";
+  x.textAlign = "center";
+  x.font = '700 50px "David Libre", David, serif';
+  x.fillText("בדיקות מין לתוכים", c.width/2, 95);
+
+  // Client + date at top right
+  x.textAlign = "right";
+  x.font = '700 38px "David Libre", David, serif';
+  x.fillText(clientName, 1160, 150);
+  x.font = '500 27px "David Libre", David, serif';
+  x.fillText(`תאריך: ${fDate(chosenDate)}`, 1160, 195);
+
+  const left = 75;
+  const top = 250;
+  const tableWidth = 1090;
+  const headerH = 62;
+  // RTL visual order from right to left: מס, סוג תוכי, תיאור, מס' זיהוי, מין
+  const colWidths = [75, 235, 230, 330, 220];
+  const headers = ["מס׳","סוג תוכי","תיאור","מס׳ זיהוי","מין"];
+  const rowH = 56;
+
+  x.strokeStyle = "#222222";
+  x.lineWidth = 2;
+  x.fillStyle = "#ffffff";
+  x.fillRect(left, top, tableWidth, headerH);
+  x.strokeRect(left, top, tableWidth, headerH);
+
+  // Draw RTL columns from right edge toward left
+  let rightEdge = left + tableWidth;
+  x.fillStyle = "#111111";
+  x.textAlign = "center";
+  x.font = '700 27px "David Libre", David, serif';
+
+  for(let i=0;i<headers.length;i++){
+    const w = colWidths[i];
+    const x0 = rightEdge - w;
+    x.strokeRect(x0, top, w, headerH);
+    x.fillText(headers[i], x0 + w/2, top + headerH/2);
+    rightEdge = x0;
+  }
+
+  x.font = '500 24px "David Libre", David, serif';
+  let y = top + headerH;
+  const maxRows = Math.floor((1640 - y) / rowH);
+  const rowsToDraw = rows.slice(0, maxRows);
+
+  rowsToDraw.forEach((r,index)=>{
+    const values = [
+      String(index+1),
+      r.type || "",
+      r.description || "",
+      r.identification || "",
+      r.result || ""
+    ];
+
+    x.fillStyle = "#ffffff";
+    x.fillRect(left, y, tableWidth, rowH);
+    x.strokeStyle = "#222222";
+    x.strokeRect(left, y, tableWidth, rowH);
+
+    rightEdge = left + tableWidth;
+    for(let i=0;i<values.length;i++){
+      const w = colWidths[i];
+      const x0 = rightEdge - w;
+      x.strokeRect(x0, y, w, rowH);
+
+      if(i===4){
+        x.fillStyle = values[i]==="זכר" ? "#1846b8" : "#c62828";
+        x.font = '700 25px "David Libre", David, serif';
+      }else{
+        x.fillStyle = "#111111";
+        x.font = '500 24px "David Libre", David, serif';
+      }
+
+      x.textAlign = (i===2 || i===3) ? "left" : "center";
+      const tx = (i===2 || i===3) ? x0 + 12 : x0 + w/2;
+      let txt = String(values[i]);
+      while(x.measureText(txt).width > w-20 && txt.length>4){
+        txt = txt.slice(0,-1);
+      }
+      if(txt !== String(values[i])) txt += "…";
+      x.fillText(txt, tx, y + rowH/2);
+
+      rightEdge = x0;
+    }
+    y += rowH;
+  });
+
+  x.fillStyle="#333333";
+  x.textAlign="right";
+  x.font='500 23px "David Libre", David, serif';
+  x.fillText(`סה״כ בדיקות: ${rows.length}`, left+tableWidth, Math.min(y+42,1695));
+
+  if(rows.length > rowsToDraw.length){
+    x.fillStyle="#a00000";
+    x.textAlign="left";
+    x.fillText(`מוצגות ${rowsToDraw.length} מתוך ${rows.length} בדיקות`, left, Math.min(y+42,1695));
+  }
+
+  const jpegBytes = dataUrlToBytes(c.toDataURL("image/jpeg",0.94));
+  const pdfBlob = makeSinglePagePdf(jpegBytes,c.width,c.height);
+  const filename = `טבלה-${safeFilePart(clientName)}-${fDate(chosenDate).replaceAll("/","-")}.pdf`;
+  await shareOrDownloadPdf(pdfBlob,filename);
+}
+
+async function saveCertificatePdf(){
+  if(!validate()) return;
+  saveCurrentRecord(false);
+  await redraw();
+
+  const filename = buildCertificateFileName() + ".pdf";
+  const jpegUrl = canvas.toDataURL("image/jpeg", 0.92);
+  const jpegBytes = dataUrlToBytes(jpegUrl);
+  const pdfBlob = makeSinglePagePdf(jpegBytes, canvas.width, canvas.height);
+
+  await shareOrDownloadPdf(pdfBlob, filename);
 }
 
 async function printCertificate(){
@@ -468,7 +638,40 @@ function closeCustomerForm(){customerFormCard.classList.add("hidden")}
 function saveCustomer(){const city=customerCity.value.trim(),name=customerName.value.trim();if(!city||!name){alert("יש למלא עיר ושם לקוח");return}const id=customerId.value||uid(),list=readJson(DB_KEYS.customers,[]),item={id,city,name,phone:customerPhone.value.trim(),email:customerEmail.value.trim(),notes:customerNotes.value.trim(),favorite:customerFavorite.checked};const i=list.findIndex(x=>x.id===id);if(i>=0)list[i]=item;else list.push(item);writeJson(DB_KEYS.customers,list);closeCustomerForm();renderCustomers();refreshSelectors()}
 function deleteCustomer(id){if(!confirm("למחוק את הלקוח?"))return;writeJson(DB_KEYS.customers,readJson(DB_KEYS.customers,[]).filter(x=>x.id!==id));renderCustomers();refreshSelectors()}
 function renderCustomers(){const q=(customerSearch.value||"").trim().toLowerCase(),list=readJson(DB_KEYS.customers,[]).filter(c=>(c.city+" "+c.name).toLowerCase().includes(q)).sort((a,b)=>(+b.favorite-+a.favorite)||a.city.localeCompare(b.city,"he")||a.name.localeCompare(b.name,"he"));customersList.innerHTML=list.length?list.map(c=>`<div class="list-item"><div class="list-title">${c.favorite?"⭐ ":""}${escapeHtml(c.name)}</div><div class="list-sub">עיר: ${escapeHtml(c.city)}${c.phone?` · ${escapeHtml(c.phone)}`:""}</div><div class="list-actions"><button class="secondary" onclick="openCustomerForm('${c.id}')">עריכה</button><button class="secondary" onclick="deleteCustomer('${c.id}')">מחיקה</button></div></div>`).join(""):'<div class="empty">לא נמצאו לקוחות</div>'}
-function saveRecord(){if(!validate())return;const c=readJson(DB_KEYS.customers,[]).find(x=>x.id===clientSelect.value),r={id:uid(),date:date.value,city:citySelect.value,client:c?.name||v("sender"),type:v("birdType"),identification:v("idNumber"),description:v("description"),result:getSex()==="male"?"זכר":"נקבה",createdAt:new Date().toISOString()},list=readJson(DB_KEYS.history,[]);list.unshift(r);writeJson(DB_KEYS.history,list);alert("הרשומה נשמרה בטלפון")}
+function currentRecord(){
+  const c=readJson(DB_KEYS.customers,[]).find(x=>x.id===clientSelect.value);
+  return {
+    id:uid(),
+    date:date.value,
+    city:citySelect.value,
+    client:c?.name||v("sender"),
+    type:v("birdType"),
+    identification:v("idNumber"),
+    description:v("description"),
+    result:getSex()==="male"?"זכר":"נקבה",
+    createdAt:new Date().toISOString()
+  };
+}
+function saveCurrentRecord(showMessage=true){
+  if(!validate()) return false;
+  const r=currentRecord();
+  const list=readJson(DB_KEYS.history,[]);
+  const duplicate=list.some(x =>
+    x.date===r.date &&
+    x.client===r.client &&
+    x.identification===r.identification &&
+    x.type===r.type &&
+    x.description===r.description &&
+    x.result===r.result
+  );
+  if(!duplicate){
+    list.unshift(r);
+    writeJson(DB_KEYS.history,list);
+  }
+  if(showMessage) alert(duplicate ? "הרשומה כבר קיימת" : "הרשומה נשמרה בטלפון");
+  return true;
+}
+function saveRecord(){ saveCurrentRecord(true); }
 function renderHistory(){const q=(historySearch.value||"").trim().toLowerCase(),list=readJson(DB_KEYS.history,[]).filter(r=>[r.client,r.city,r.type,r.identification,r.description,r.result,r.date].join(" ").toLowerCase().includes(q));historyList.innerHTML=list.length?list.map(r=>`<div class="list-item"><div class="list-title">${escapeHtml(r.identification)} · ${escapeHtml(r.result)}</div><div class="list-sub">${escapeHtml(r.client)} · ${escapeHtml(r.city||"")} · ${escapeHtml(r.type)} · ${escapeHtml(r.date)}</div><div class="list-sub">${escapeHtml(r.description||"")}</div></div>`).join(""):'<div class="empty">אין עדיין רשומות</div>'}
 function exportHistoryCsv(){const rows=readJson(DB_KEYS.history,[]);if(!rows.length){alert("אין רשומות לייצוא");return}const all=[["תאריך","לקוח","עיר","סוג","מספר זיהוי","תיאור","תוצאה"],...rows.map(r=>[r.date,r.client,r.city,r.type,r.identification,r.description,r.result])],csv="\ufeff"+all.map(row=>row.map(x=>`"${String(x??"").replaceAll('"','""')}"`).join(",")).join("\n"),a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="LoriLab-results.csv";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
 seedCustomers();refreshSelectors();redraw();
