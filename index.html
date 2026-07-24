@@ -565,8 +565,8 @@ async function createClientTablePdf(){
   const femaleCount=rows.filter(r=>r.result==="נקבה").length;
   const reportNo=`LL-${chosenDate.replaceAll("-","")}-${String(rows.length).padStart(3,"0")}`;
 
-  const pageW=1754,pageH=1240;
-  const rowsPerPage=12;
+  const pageW=1240,pageH=1754;
+  const rowsPerPage=18;
   const totalPages=Math.ceil(rows.length/rowsPerPage);
   const pages=[];
   const logo=await loadTableLogo().catch(()=>null);
@@ -630,39 +630,39 @@ async function createClientTablePdf(){
     // סימן מים עדין מאחורי הטבלה.
     if(logo){
       x.save();x.globalAlpha=0.035;
-      const ratio=Math.min(720/logo.width,500/logo.height);
+      const ratio=Math.min(760/logo.width,650/logo.height);
       const ww=logo.width*ratio,hh=logo.height*ratio;
-      x.drawImage(logo,(pageW-ww)/2,530,ww,hh);
+      x.drawImage(logo,(pageW-ww)/2,690,ww,hh);
       x.restore();
     }
 
     // לוגו וכותרת.
     if(logo){
-      const ratio=Math.min(370/logo.width,145/logo.height);
+      const ratio=Math.min(500/logo.width,190/logo.height);
       const ww=logo.width*ratio,hh=logo.height*ratio;
-      x.drawImage(logo,(pageW-ww)/2,55,ww,hh);
+      x.drawImage(logo,(pageW-ww)/2,58,ww,hh);
     }
     x.textAlign="center";x.fillStyle="#064c35";
     x.font='700 54px "David Libre", David, serif';
-    x.fillText("בדיקות מין לתוכים",pageW/2,218);
+    x.fillText("בדיקות מין לתוכים",pageW/2,270);
     x.fillStyle="#8b6b18";x.font='500 23px "David Libre", David, serif';
-    x.fillText("דו״ח מסכם – בדיקות PCR לזיהוי מין",pageW/2,260);
+    x.fillText("דו״ח מסכם – בדיקות PCR לזיהוי מין",pageW/2,315);
 
-    drawInfoCard(x,1380,70,300,98,"מספר דוח",reportNo);
-    drawInfoCard(x,1030,295,650,92,"לקוח",clientName);
-    drawInfoCard(x,70,295,350,92,"תאריך",fDate(chosenDate));
-    drawCenteredStat(x,455,295,170,"זכרים",maleCount,"#1f5fc4");
-    drawCenteredStat(x,645,295,170,"נקבות",femaleCount,"#d32657");
-    drawCenteredStat(x,835,295,170,"סה״כ",rows.length,"#174b31");
+    drawInfoCard(x,870,70,300,98,"מספר דוח",reportNo);
+    drawInfoCard(x,620,355,550,96,"לקוח",clientName);
+    drawInfoCard(x,70,355,300,96,"תאריך",fDate(chosenDate));
+    drawCenteredStat(x,400,355,150,"זכרים",maleCount,"#1f5fc4");
+    drawCenteredStat(x,400,465,150,"נקבות",femaleCount,"#d32657");
+    drawCenteredStat(x,570,465,150,"סה״כ",rows.length,"#174b31");
 
     // טבלת תוצאות – פריסה מלאה, ריווח מוגדל ושתי שורות טקסט בעת הצורך.
-    const left=70,top=425,tableWidth=1610,headerH=62,rowH=51;
+    const left=70,top=590,tableWidth=1100,headerH=66,rowH=54;
     const columns=[
-      {key:"index",label:"מס׳",width:90,align:"center"},
-      {key:"type",label:"סוג",width:330,align:"center"},
-      {key:"description",label:"תיאור",width:490,align:"right"},
-      {key:"identification",label:"מספר זיהוי",width:430,align:"center"},
-      {key:"result",label:"מין",width:270,align:"center"}
+      {key:"index",label:"מס׳",width:75,align:"center"},
+      {key:"type",label:"סוג",width:220,align:"center"},
+      {key:"description",label:"תיאור",width:330,align:"right"},
+      {key:"identification",label:"מספר זיהוי",width:285,align:"center"},
+      {key:"result",label:"מין",width:190,align:"center"}
     ];
 
     drawRoundedRect(x,left,top,tableWidth,headerH,14,"#064c35","#064c35");
@@ -702,15 +702,15 @@ async function createClientTablePdf(){
 
     // תחתית מקצועית.
     x.strokeStyle="#c9a12d";x.lineWidth=2;
-    x.beginPath();x.moveTo(70,1124);x.lineTo(1680,1124);x.stroke();
+    x.beginPath();x.moveTo(70,1625);x.lineTo(1170,1625);x.stroke();
     x.textAlign="center";x.fillStyle="#174b31";x.font='500 22px "David Libre", David, serif';
-    x.fillText("055-5710210",475,1162);
-    x.fillText("LoriLab2025@gmail.com",890,1162);
-    x.fillText("ישראל",1370,1162);
+    x.fillText("055-5710210",250,1662);
+    x.fillText("LoriLab2025@gmail.com",620,1662);
+    x.fillText("ישראל",990,1662);
     x.fillStyle="#6d756f";x.font='500 16px Arial';
-    x.fillText("Lori Lab · PCR Sex Identification Summary",pageW/2,1198);
+    x.fillText("Lori Lab · PCR Sex Identification Summary",pageW/2,1700);
     x.textAlign="right";x.font='500 18px "David Libre", David, serif';
-    x.fillText(`עמוד ${pageIndex+1} מתוך ${totalPages}`,1650,1198);
+    x.fillText(`עמוד ${pageIndex+1} מתוך ${totalPages}`,1150,1700);
 
     pages.push(c);
   }

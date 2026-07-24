@@ -1,4 +1,4 @@
-const CACHE = "lori-lab-manager-v9-3-table-upgrade";
+const CACHE = "lori-lab-manager-v9-4-portrait";
 const APP_SHELL = [
   "./",
   "./index.html",
