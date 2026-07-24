@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Lori Lab">
-<title>Lori Lab Manager v6</title>
+<title>Lori Lab Manager v7</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=David+Libre:wght@400;500;700&display=swap');
 *{box-sizing:border-box}
@@ -77,6 +77,13 @@ html,body{width:210mm!important;height:297mm!important;margin:0!important;paddin
 #certificateScreen,.preview-card{display:block!important;margin:0!important;padding:0!important;background:#fff!important;border:0!important;box-shadow:none!important}
 #certificate{display:block!important;width:210mm!important;height:297mm!important;max-width:none!important;box-shadow:none!important}
 }
+
+.table-modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;padding:12px;overflow:auto}
+.table-modal-card{max-width:900px;margin:10px auto;background:#fff;border-radius:16px;padding:12px}
+.table-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;font-size:20px;color:var(--green)}
+.table-preview-wrap{overflow:auto;background:#dfe5e1;border-radius:10px;padding:8px}
+#tablePreviewCanvas{display:block;width:100%;height:auto;background:#fff;box-shadow:0 4px 16px rgba(0,0,0,.18)}
+
 </style>
 </head>
 
@@ -175,6 +182,23 @@ html,body{width:210mm!important;height:297mm!important;margin:0!important;paddin
     </section>
   </main>
 </div>
+
+<div id="tablePreviewModal" class="table-modal hidden">
+  <div class="table-modal-card">
+    <div class="table-modal-head">
+      <strong>תצוגה מקדימה של הטבלה</strong>
+      <button class="secondary small" onclick="closeTablePreview()">✕</button>
+    </div>
+    <div class="table-preview-wrap">
+      <canvas id="tablePreviewCanvas" width="1754" height="1240"></canvas>
+    </div>
+    <div class="actions">
+      <button class="primary" onclick="saveCurrentTablePdf()">💾 שמור / שתף PDF</button>
+      <button class="secondary" onclick="closeTablePreview()">חזרה</button>
+    </div>
+  </div>
+</div>
+
 
 <script>
 const FEMALE_BG="./certificate-female.webp";
@@ -407,6 +431,23 @@ async function shareOrDownloadPdf(pdfBlob, filename){
   setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 
+
+let currentTablePdfBlob = null;
+let currentTablePdfName = "";
+
+function closeTablePreview(){
+  document.getElementById("tablePreviewModal").classList.add("hidden");
+}
+
+async function loadTableLogo(){
+  return await new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.onload=()=>resolve(img);
+    img.onerror=reject;
+    img.src="./table-logo.webp";
+  });
+}
+
 async function createClientTablePdf(){
   const chosenDate = document.getElementById("date").value;
   const selectedCustomer = readJson(DB_KEYS.customers,[]).find(x=>x.id===clientSelect.value);
@@ -421,7 +462,6 @@ async function createClientTablePdf(){
     return;
   }
 
-  // Include the current certificate automatically if it is complete.
   if(validate()) saveCurrentRecord(false);
 
   const rows = readJson(DB_KEYS.history,[])
@@ -433,131 +473,129 @@ async function createClientTablePdf(){
     return;
   }
 
-  const c = document.createElement("canvas");
-  c.width = 1240;
-  c.height = 1754;
+  const c = document.getElementById("tablePreviewCanvas");
+  c.width = 1754;
+  c.height = 1240;
   const x = c.getContext("2d");
 
-  x.fillStyle = "#ffffff";
+  x.fillStyle="#ffffff";
   x.fillRect(0,0,c.width,c.height);
-  x.direction = "rtl";
-  x.textBaseline = "middle";
+  x.direction="rtl";
+  x.textBaseline="middle";
 
-  // Lori Lab logo
-  const logo = new Image();
-  logo.src = "./icon-512.webp";
+  // Exact Lori Lab logo supplied by the user.
   try{
-    await new Promise((resolve,reject)=>{
-      logo.onload=resolve;
-      logo.onerror=reject;
-    });
-    x.drawImage(logo, 55, 35, 165, 165);
+    const logo = await loadTableLogo();
+    const maxW=360, maxH=175;
+    const ratio=Math.min(maxW/logo.width,maxH/logo.height);
+    const w=logo.width*ratio, h=logo.height*ratio;
+    x.drawImage(logo,(c.width-w)/2,18,w,h);
   }catch(e){}
 
-  // Main title
-  x.fillStyle = "#111111";
-  x.textAlign = "center";
-  x.font = '700 50px "David Libre", David, serif';
-  x.fillText("בדיקות מין לתוכים", c.width/2, 95);
+  x.fillStyle="#111";
+  x.textAlign="center";
+  x.font='700 48px "David Libre", David, serif';
+  x.fillText("בדיקות מין לתוכים",c.width/2,215);
 
-  // Client + date at top right
-  x.textAlign = "right";
-  x.font = '700 38px "David Libre", David, serif';
-  x.fillText(clientName, 1160, 150);
-  x.font = '500 27px "David Libre", David, serif';
-  x.fillText(`תאריך: ${fDate(chosenDate)}`, 1160, 195);
+  x.strokeStyle="#111";
+  x.lineWidth=2;
+  x.beginPath();x.moveTo(55,250);x.lineTo(c.width-55,250);x.stroke();
 
-  const left = 75;
-  const top = 250;
-  const tableWidth = 1090;
-  const headerH = 62;
-  // RTL visual order from right to left: מס, סוג תוכי, תיאור, מס' זיהוי, מין
-  const colWidths = [75, 235, 230, 330, 220];
-  const headers = ["מס׳","סוג תוכי","תיאור","מס׳ זיהוי","מין"];
-  const rowH = 56;
+  x.textAlign="right";
+  x.font='700 30px "David Libre", David, serif';
+  x.fillText(`לקוח: ${clientName}`,c.width-70,285);
 
-  x.strokeStyle = "#222222";
-  x.lineWidth = 2;
-  x.fillStyle = "#ffffff";
-  x.fillRect(left, top, tableWidth, headerH);
-  x.strokeRect(left, top, tableWidth, headerH);
+  x.textAlign="left";
+  x.font='500 28px "David Libre", David, serif';
+  x.fillText(`תאריך: ${fDate(chosenDate)}`,70,285);
 
-  // Draw RTL columns from right edge toward left
-  let rightEdge = left + tableWidth;
-  x.fillStyle = "#111111";
-  x.textAlign = "center";
-  x.font = '700 27px "David Libre", David, serif';
+  const left=55, top=330, tableWidth=1644, headerH=50, rowH=38;
+  const colWidths=[85,340,360,500,359];
+  const headers=["מס׳","סוג תוכי","תיאור","מס׳ זיהוי","מין"];
 
+  x.strokeStyle="#222";
+  x.lineWidth=1.5;
+  x.fillStyle="#fff";
+  x.fillRect(left,top,tableWidth,headerH);
+  x.strokeRect(left,top,tableWidth,headerH);
+
+  let rightEdge=left+tableWidth;
+  x.textAlign="center";
+  x.fillStyle="#111";
+  x.font='700 25px "David Libre", David, serif';
   for(let i=0;i<headers.length;i++){
-    const w = colWidths[i];
-    const x0 = rightEdge - w;
-    x.strokeRect(x0, top, w, headerH);
-    x.fillText(headers[i], x0 + w/2, top + headerH/2);
-    rightEdge = x0;
+    const w=colWidths[i], x0=rightEdge-w;
+    x.strokeRect(x0,top,w,headerH);
+    x.fillText(headers[i],x0+w/2,top+headerH/2);
+    rightEdge=x0;
   }
 
-  x.font = '500 24px "David Libre", David, serif';
-  let y = top + headerH;
-  const maxRows = Math.floor((1640 - y) / rowH);
-  const rowsToDraw = rows.slice(0, maxRows);
+  const maxRows=Math.floor((1090-(top+headerH))/rowH);
+  const rowsToDraw=rows.slice(0,maxRows);
+  let y=top+headerH;
 
   rowsToDraw.forEach((r,index)=>{
-    const values = [
+    const values=[
       String(index+1),
-      r.type || "",
-      r.description || "",
-      r.identification || "",
-      r.result || ""
+      r.type||"",
+      r.description||"",
+      r.identification||"",
+      r.result||""
     ];
 
-    x.fillStyle = "#ffffff";
-    x.fillRect(left, y, tableWidth, rowH);
-    x.strokeStyle = "#222222";
-    x.strokeRect(left, y, tableWidth, rowH);
+    x.fillStyle="#fff";
+    x.fillRect(left,y,tableWidth,rowH);
+    x.strokeStyle="#222";
+    x.strokeRect(left,y,tableWidth,rowH);
 
-    rightEdge = left + tableWidth;
+    rightEdge=left+tableWidth;
     for(let i=0;i<values.length;i++){
-      const w = colWidths[i];
-      const x0 = rightEdge - w;
-      x.strokeRect(x0, y, w, rowH);
+      const w=colWidths[i], x0=rightEdge-w;
+      x.strokeRect(x0,y,w,rowH);
 
-      if(i===4){
-        x.fillStyle = values[i]==="זכר" ? "#1846b8" : "#c62828";
-        x.font = '700 25px "David Libre", David, serif';
-      }else{
-        x.fillStyle = "#111111";
-        x.font = '500 24px "David Libre", David, serif';
-      }
+      x.font=(i===4)
+        ? '700 23px "David Libre", David, serif'
+        : '500 22px "David Libre", David, serif';
+      x.fillStyle=(i===4)
+        ? (values[i]==="זכר"?"#1746c7":"#d02020")
+        : "#111";
+      x.textAlign=(i===2||i===3)?"left":"center";
+      const tx=(i===2||i===3)?x0+12:x0+w/2;
 
-      x.textAlign = (i===2 || i===3) ? "left" : "center";
-      const tx = (i===2 || i===3) ? x0 + 12 : x0 + w/2;
-      let txt = String(values[i]);
-      while(x.measureText(txt).width > w-20 && txt.length>4){
-        txt = txt.slice(0,-1);
-      }
-      if(txt !== String(values[i])) txt += "…";
-      x.fillText(txt, tx, y + rowH/2);
-
-      rightEdge = x0;
+      let txt=String(values[i]);
+      while(x.measureText(txt).width>w-20 && txt.length>4) txt=txt.slice(0,-1);
+      if(txt!==String(values[i])) txt+="…";
+      x.fillText(txt,tx,y+rowH/2);
+      rightEdge=x0;
     }
-    y += rowH;
+    y+=rowH;
   });
 
-  x.fillStyle="#333333";
-  x.textAlign="right";
-  x.font='500 23px "David Libre", David, serif';
-  x.fillText(`סה״כ בדיקות: ${rows.length}`, left+tableWidth, Math.min(y+42,1695));
+  // Footer, matching the requested professional layout.
+  x.strokeStyle="#111";
+  x.beginPath();x.moveTo(55,1150);x.lineTo(c.width-55,1150);x.stroke();
 
-  if(rows.length > rowsToDraw.length){
-    x.fillStyle="#a00000";
-    x.textAlign="left";
-    x.fillText(`מוצגות ${rowsToDraw.length} מתוך ${rows.length} בדיקות`, left, Math.min(y+42,1695));
+  x.textAlign="center";
+  x.fillStyle="#111";
+  x.font='500 22px "David Libre", David, serif';
+  x.fillText("Lori Lab – מעבדה לבדיקות מין ומחלות לתוכים",290,1185);
+  x.fillText("055-5710210",750,1185);
+  x.fillText("LoriLab2025@gmail.com",1165,1185);
+  x.fillText("ישראל",1580,1185);
+
+  const jpegBytes=dataUrlToBytes(c.toDataURL("image/jpeg",0.95));
+  currentTablePdfBlob=makeSinglePagePdf(jpegBytes,c.width,c.height);
+  currentTablePdfName=`טבלה-${safeFilePart(clientName)}-${fDate(chosenDate).replaceAll("/","-")}.pdf`;
+
+  document.getElementById("tablePreviewModal").classList.remove("hidden");
+}
+
+async function saveCurrentTablePdf(){
+  if(!currentTablePdfBlob || !currentTablePdfName){
+    alert("אין טבלה מוכנה לשמירה");
+    return;
   }
-
-  const jpegBytes = dataUrlToBytes(c.toDataURL("image/jpeg",0.94));
-  const pdfBlob = makeSinglePagePdf(jpegBytes,c.width,c.height);
-  const filename = `טבלה-${safeFilePart(clientName)}-${fDate(chosenDate).replaceAll("/","-")}.pdf`;
-  await shareOrDownloadPdf(pdfBlob,filename);
+  await shareOrDownloadPdf(currentTablePdfBlob,currentTablePdfName);
 }
 
 async function saveCertificatePdf(){
