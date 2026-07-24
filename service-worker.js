@@ -1,4 +1,4 @@
-const CACHE = "lori-lab-v13-3-drive-folder-id";
+const CACHE = "lori-lab-v14-diseases";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -7,7 +7,8 @@ const APP_SHELL = [
   "./icon-512.webp",
   "./certificate-male.webp",
   "./certificate-female.webp",
-  "./table-logo.webp"
+  "./table-logo.webp",
+  "./diseases.html"
 ];
 
 self.addEventListener("install", event => {

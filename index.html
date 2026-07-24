@@ -45,11 +45,16 @@ canvas{display:block;width:100%;height:auto;background:white;box-shadow:0 6px 20
 .topbar{background:#fff;border-radius:16px;padding:14px;margin-bottom:14px;box-shadow:0 6px 20px rgba(0,0,0,.1)}
 .topbar h1{margin:0 0 4px;text-align:center;color:var(--green);font-size:28px}
 .version-badge{text-align:center;font:700 13px Arial,sans-serif;color:#7b6a2e;margin-bottom:12px}
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .tab{background:#e8efe9;color:var(--green);padding:10px 6px;font-size:15px}
 .tab.active{background:var(--green);color:#fff}
 .screen{display:none}
 .screen.active{display:block}
+.diseases-card{padding:10px}
+.diseases-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.diseases-frame{width:100%;height:82vh;min-height:720px;border:1px solid #cbd8cf;border-radius:12px;background:#fff}
+@media(max-width:480px){.diseases-frame{height:78vh;min-height:620px}}
+
 h2{margin:0 0 14px;color:var(--green)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 select{width:100%;border:1px solid #b8c6bd;border-radius:10px;padding:12px;font-size:17px;font-family:"David Libre",David,serif;background:#fff}
@@ -65,7 +70,7 @@ select{width:100%;border:1px solid #b8c6bd;border-radius:10px;padding:12px;font-
 .favorite-line{display:flex;align-items:center;gap:8px;margin:8px 0 4px}
 .favorite-line input{width:auto}
 .empty{padding:20px;text-align:center;color:#6f7d73}
-@media(max-width:480px){.grid2{grid-template-columns:1fr}.tabs{grid-template-columns:1fr 1fr 1fr}.tab{font-size:13px}.actions{grid-template-columns:1fr}.table-modal{padding:4px}.table-modal-card{margin:4px auto;padding:8px}.table-modal-head{font-size:17px}}
+@media(max-width:480px){.grid2{grid-template-columns:1fr}.tabs{grid-template-columns:1fr 1fr}.tab{font-size:13px}.actions{grid-template-columns:1fr}.table-modal{padding:4px}.table-modal-card{margin:4px auto;padding:8px}.table-modal-head{font-size:17px}}
 @media print{
   .topbar,.screen:not(#certificateScreen),#certificateScreen>.card{display:none!important}
   #certificateScreen{display:block!important}
@@ -74,7 +79,7 @@ select{width:100%;border:1px solid #b8c6bd;border-radius:10px;padding:12px;font-
 
 @media print{
 html,body{width:210mm!important;height:297mm!important;margin:0!important;padding:0!important;background:#fff!important}
-.topbar,#certificateScreen>.card,#customersScreen,#historyScreen{display:none!important}
+.topbar,#certificateScreen>.card,#customersScreen,#historyScreen,#diseasesScreen{display:none!important}
 #certificateScreen,.preview-card{display:block!important;margin:0!important;padding:0!important;background:#fff!important;border:0!important;box-shadow:none!important}
 #certificate{display:block!important;width:210mm!important;height:297mm!important;max-width:none!important;box-shadow:none!important}
 }
@@ -97,6 +102,7 @@ html,body{width:210mm!important;height:297mm!important;margin:0!important;paddin
       <button class="tab active" data-screen="certificateScreen">תעודה חדשה</button>
       <button class="tab" data-screen="customersScreen">לקוחות</button>
       <button class="tab" data-screen="historyScreen">היסטוריה</button>
+      <button class="tab" data-screen="diseasesScreen">מחלות</button>
     </div>
   </header>
 
@@ -185,6 +191,22 @@ html,body{width:210mm!important;height:297mm!important;margin:0!important;paddin
         </div>
         <input id="historySearch" placeholder="חיפוש לפי לקוח, סוג או מספר זיהוי" oninput="renderHistory()">
         <div id="historyList" class="list"></div>
+      </div>
+    </section>
+
+    <section id="diseasesScreen" class="screen">
+      <div class="card diseases-card">
+        <div class="diseases-toolbar">
+          <h2 style="margin:0">תעודת מחלות</h2>
+          <button class="secondary small" onclick="document.getElementById('diseasesFrame').contentWindow.location.reload()">↻ רענון</button>
+        </div>
+        <iframe
+          id="diseasesFrame"
+          class="diseases-frame"
+          src="./diseases.html"
+          title="תעודת מחלות Lori Lab"
+          loading="lazy">
+        </iframe>
       </div>
     </section>
   </main>
