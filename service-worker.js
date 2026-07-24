@@ -1,4 +1,4 @@
-const CACHE = "lori-lab-manager-v10-portrait-filename-fix";
+const CACHE = "lori-lab-manager-v10-1-certificate-filename";
 const APP_SHELL = [
   "./",
   "./index.html",
