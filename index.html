@@ -70,6 +70,13 @@ select{width:100%;border:1px solid #b8c6bd;border-radius:10px;padding:12px;font-
   #certificateScreen{display:block!important}
 }
 
+
+@media print{
+html,body{width:210mm!important;height:297mm!important;margin:0!important;padding:0!important;background:#fff!important}
+.topbar,#certificateScreen>.card,#customersScreen,#historyScreen{display:none!important}
+#certificateScreen,.preview-card{display:block!important;margin:0!important;padding:0!important;background:#fff!important;border:0!important;box-shadow:none!important}
+#certificate{display:block!important;width:210mm!important;height:297mm!important;max-width:none!important;box-shadow:none!important}
+}
 </style>
 </head>
 
@@ -167,4 +174,171 @@ select{width:100%;border:1px solid #b8c6bd;border-radius:10px;padding:12px;font-
   </main>
 </div>
 
-</html>
+<script>
+const FEMALE_BG="./certificate-female.webp";
+const MALE_BG="./certificate-male.webp";
+
+const canvas=document.getElementById("certificate");
+const ctx=canvas.getContext("2d");
+const imgs={female:new Image(),male:new Image()};
+imgs.female.src=FEMALE_BG;
+imgs.male.src=MALE_BG;
+
+document.getElementById("date").valueAsDate=new Date();
+
+function getSex(){return document.querySelector('input[name="sex"]:checked').value}
+function v(id){return document.getElementById(id).value.trim()}
+function fDate(x){if(!x)return"";const [y,m,d]=x.split("-");return `${d}/${m}/${y}`}
+
+function drawTextRTL(text,x,y,maxWidth,size=22,align="right"){
+  if(!text)return;
+  ctx.save();
+  ctx.direction="rtl";
+  ctx.textAlign=align;
+  ctx.textBaseline="middle";
+  ctx.fillStyle="#174b31";
+  ctx.font=`700 ${size}px "David Libre", David, serif`;
+  while(ctx.measureText(text).width>maxWidth && size>14){
+    size--;ctx.font=`700 ${size}px "David Libre", David, serif`;
+  }
+  ctx.fillText(text,x,y,maxWidth);
+  ctx.restore();
+}
+function drawDate(text,x,y){
+  ctx.save();
+  ctx.direction="ltr";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.fillStyle="#174b31";
+  ctx.font='500 18px "David Libre", David, serif';
+  ctx.fillText(text,x,y);
+  ctx.restore();
+}
+function drawValue(text,x,y,maxWidth,size=21){
+  if(!text)return;
+  ctx.save();
+  ctx.direction="rtl";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.fillStyle="#174b31";
+  ctx.font=`700 ${size}px "David Libre", David, serif`;
+  while(ctx.measureText(text).width>maxWidth && size>14){
+    size--;
+    ctx.font=`700 ${size}px "David Libre", David, serif`;
+  }
+  ctx.fillText(text,x,y,maxWidth);
+  ctx.restore();
+}
+async function redraw(){
+  const img=imgs[getSex()];
+  if(!img.complete) await new Promise(r=>img.onload=r);
+  ctx.clearRect(0,0,1024,1448);
+  ctx.drawImage(img,0,0,1024,1448);
+
+  const d=fDate(document.getElementById("date").value);
+
+  ctx.save();
+  ctx.fillStyle="#fff";
+  ctx.font='500 21px "David Libre", David, serif';
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.fillText(d,164,360);
+  ctx.restore();
+
+  // פרטי לקוח – הערכים נשארים משמאל לתוויות הקבועות
+  drawTextRTL(v("owner"),815,389,205,21);
+  drawTextRTL(v("sender"),815,423,205,21);
+
+  // פרטי הנבדק – הערכים ממורכזים בעמודה השמאלית ללא מסכת רקע
+  drawValue(v("birdType"),690,632,180,21);
+  drawValue(v("idNumber"),690,687,180,21);
+  drawValue(v("description"),690,744,180,21);
+
+  // תאריכים בטבלת התוצאות – מוזזים שמאלה מהאייקון
+  drawDate(d,548,928);
+  drawDate(d,548,988);
+}
+
+["owner","sender","birdType","idNumber","description","date"].forEach(id=>{
+  document.getElementById(id).addEventListener("input",redraw);
+});
+document.querySelectorAll('input[name="sex"]').forEach(el=>el.addEventListener("change",redraw));
+imgs.female.onload=redraw;
+imgs.male.onload=redraw;
+
+function validate(){
+  const ids=["owner","sender","birdType","idNumber","description","date"];
+  if(ids.some(id=>!document.getElementById(id).value.trim())){
+    alert("אנא מלא את כל השדות");
+    return false;
+  }
+  return true;
+}
+async function printCertificate(){
+  if(!validate()) return;
+  await redraw();
+  setTimeout(()=>window.print(),250);
+}
+function saveForm(){
+  const data={
+    owner:v("owner"),sender:v("sender"),birdType:v("birdType"),
+    idNumber:v("idNumber"),description:v("description"),
+    date:document.getElementById("date").value,sex:getSex()
+  };
+  localStorage.setItem("loriLabForm",JSON.stringify(data));
+  alert("הפרטים נשמרו בטלפון");
+}
+function loadForm(){
+  const raw=localStorage.getItem("loriLabForm");
+  if(!raw){alert("לא נמצאו פרטים שמורים");return}
+  const d=JSON.parse(raw);
+  ["owner","sender","birdType","idNumber","description"].forEach(id=>{
+    document.getElementById(id).value=d[id]||"";
+  });
+  document.getElementById("date").value=d.date||"";
+  const r=document.querySelector(`input[name="sex"][value="${d.sex||"female"}"]`);
+  if(r)r.checked=true;
+  redraw();
+}
+function clearForm(){
+  ["owner","sender","birdType","idNumber","description"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("date").valueAsDate=new Date();
+  document.querySelector('input[value="female"]').checked=true;
+  redraw();
+}
+</script>
+<script>
+const DB_KEYS={customers:"loriLabCustomersV1",history:"loriLabHistoryV1"};
+function readJson(k,f){try{return JSON.parse(localStorage.getItem(k))??f}catch(e){return f}}
+function writeJson(k,v){localStorage.setItem(k,JSON.stringify(v))}
+function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random()}
+function escapeHtml(s=""){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function seedCustomers(){if(readJson(DB_KEYS.customers,null))return;writeJson(DB_KEYS.customers,[
+{id:uid(),city:"אעבלין",name:"רושדי",phone:"",email:"",notes:"",favorite:true},
+{id:uid(),city:"אעבלין",name:"נדאר אבו גנימה",phone:"",email:"",notes:"",favorite:false},
+{id:uid(),city:"אעבלין",name:"איהאב שיך אחמד",phone:"",email:"",notes:"",favorite:false},
+{id:uid(),city:"אעבלין",name:"סאהר",phone:"",email:"",notes:"",favorite:true}] )}
+function switchScreen(id){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.dataset.screen===id));if(id==="customersScreen")renderCustomers();if(id==="historyScreen")renderHistory()}
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>switchScreen(t.dataset.screen)))
+function refreshSelectors(){const cs=readJson(DB_KEYS.customers,[]);const city=document.getElementById("citySelect"),client=document.getElementById("clientSelect");const cities=[...new Set(cs.map(c=>c.city).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));city.innerHTML='<option value="">בחר עיר</option>'+cities.map(x=>`<option>${escapeHtml(x)}</option>`).join("");client.innerHTML='<option value="">בחר לקוח</option>'}
+function loadClientsForCity(){const city=document.getElementById("citySelect").value;const cs=readJson(DB_KEYS.customers,[]).filter(c=>c.city===city).sort((a,b)=>(+b.favorite-+a.favorite)||a.name.localeCompare(b.name,"he"));document.getElementById("clientSelect").innerHTML='<option value="">בחר לקוח</option>'+cs.map(c=>`<option value="${c.id}">${c.favorite?"⭐ ":""}${escapeHtml(c.name)}</option>`).join("")}
+function selectCustomer(){const c=readJson(DB_KEYS.customers,[]).find(x=>x.id===document.getElementById("clientSelect").value);if(!c)return;owner.value=c.name;sender.value=c.name;redraw()}
+citySelect.addEventListener("change",loadClientsForCity);clientSelect.addEventListener("change",selectCustomer)
+function openCustomerForm(id=""){const c=readJson(DB_KEYS.customers,[]).find(x=>x.id===id);customerFormCard.classList.remove("hidden");customerFormTitle.textContent=c?"עריכת לקוח":"לקוח חדש";customerId.value=c?.id||"";customerCity.value=c?.city||"";customerName.value=c?.name||"";customerPhone.value=c?.phone||"";customerEmail.value=c?.email||"";customerNotes.value=c?.notes||"";customerFavorite.checked=!!c?.favorite;customerFormCard.scrollIntoView({behavior:"smooth"})}
+function closeCustomerForm(){customerFormCard.classList.add("hidden")}
+function saveCustomer(){const city=customerCity.value.trim(),name=customerName.value.trim();if(!city||!name){alert("יש למלא עיר ושם לקוח");return}const id=customerId.value||uid(),list=readJson(DB_KEYS.customers,[]),item={id,city,name,phone:customerPhone.value.trim(),email:customerEmail.value.trim(),notes:customerNotes.value.trim(),favorite:customerFavorite.checked};const i=list.findIndex(x=>x.id===id);if(i>=0)list[i]=item;else list.push(item);writeJson(DB_KEYS.customers,list);closeCustomerForm();renderCustomers();refreshSelectors()}
+function deleteCustomer(id){if(!confirm("למחוק את הלקוח?"))return;writeJson(DB_KEYS.customers,readJson(DB_KEYS.customers,[]).filter(x=>x.id!==id));renderCustomers();refreshSelectors()}
+function renderCustomers(){const q=(customerSearch.value||"").trim().toLowerCase(),list=readJson(DB_KEYS.customers,[]).filter(c=>(c.city+" "+c.name).toLowerCase().includes(q)).sort((a,b)=>(+b.favorite-+a.favorite)||a.city.localeCompare(b.city,"he")||a.name.localeCompare(b.name,"he"));customersList.innerHTML=list.length?list.map(c=>`<div class="list-item"><div class="list-title">${c.favorite?"⭐ ":""}${escapeHtml(c.name)}</div><div class="list-sub">עיר: ${escapeHtml(c.city)}${c.phone?` · ${escapeHtml(c.phone)}`:""}</div><div class="list-actions"><button class="secondary" onclick="openCustomerForm('${c.id}')">עריכה</button><button class="secondary" onclick="deleteCustomer('${c.id}')">מחיקה</button></div></div>`).join(""):'<div class="empty">לא נמצאו לקוחות</div>'}
+function saveRecord(){if(!validate())return;const c=readJson(DB_KEYS.customers,[]).find(x=>x.id===clientSelect.value),r={id:uid(),date:date.value,city:citySelect.value,client:c?.name||v("sender"),type:v("birdType"),identification:v("idNumber"),description:v("description"),result:getSex()==="male"?"זכר":"נקבה",createdAt:new Date().toISOString()},list=readJson(DB_KEYS.history,[]);list.unshift(r);writeJson(DB_KEYS.history,list);alert("הרשומה נשמרה בטלפון")}
+function renderHistory(){const q=(historySearch.value||"").trim().toLowerCase(),list=readJson(DB_KEYS.history,[]).filter(r=>[r.client,r.city,r.type,r.identification,r.description,r.result,r.date].join(" ").toLowerCase().includes(q));historyList.innerHTML=list.length?list.map(r=>`<div class="list-item"><div class="list-title">${escapeHtml(r.identification)} · ${escapeHtml(r.result)}</div><div class="list-sub">${escapeHtml(r.client)} · ${escapeHtml(r.city||"")} · ${escapeHtml(r.type)} · ${escapeHtml(r.date)}</div><div class="list-sub">${escapeHtml(r.description||"")}</div></div>`).join(""):'<div class="empty">אין עדיין רשומות</div>'}
+function exportHistoryCsv(){const rows=readJson(DB_KEYS.history,[]);if(!rows.length){alert("אין רשומות לייצוא");return}const all=[["תאריך","לקוח","עיר","סוג","מספר זיהוי","תיאור","תוצאה"],...rows.map(r=>[r.date,r.client,r.city,r.type,r.identification,r.description,r.result])],csv="\ufeff"+all.map(row=>row.map(x=>`"${String(x??"").replaceAll('"','""')}"`).join(",")).join("\n"),a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="LoriLab-results.csv";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
+seedCustomers();refreshSelectors();redraw();
+</script>
+<script>
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js").catch(console.error);
+  });
+}
+</script>
+</body></html>
