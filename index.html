@@ -895,7 +895,7 @@ const DRIVE_CFG_KEY="loriLabDriveConfigV1";
 let driveTokenClient=null;
 let driveAccessToken="";
 
-function getDriveConfig(){return readJson(DRIVE_CFG_KEY,{clientId:"",rootFolderId:""})}
+function getDriveConfig(){return readJson(DRIVE_CFG_KEY,{clientId:"531999988443-kmg6n43gh2652gmun786jtgragr141bb.apps.googleusercontent.com",rootFolderId:""})}
 function extractDriveFolderId(value){
   const text=String(value||"").trim();
   const m=text.match(/\/folders\/([a-zA-Z0-9_-]+)/);
@@ -927,9 +927,17 @@ function requestDriveToken(clientId){
     driveTokenClient=google.accounts.oauth2.initTokenClient({
       client_id:clientId,
       scope:"https://www.googleapis.com/auth/drive.metadata.readonly",
-      callback:resp=>resp.error?reject(new Error(resp.error)):resolve(resp.access_token)
+      callback:resp=>{
+        if(resp.error){
+          const details=resp.error_description||resp.error;
+          reject(new Error("התחברות Google נכשלה: "+details));
+          return;
+        }
+        if(!resp.access_token){reject(new Error("Google לא החזירה הרשאת גישה ל־Drive."));return}
+        resolve(resp.access_token);
+      }
     });
-    driveTokenClient.requestAccessToken({prompt:driveAccessToken?"":"consent"});
+    driveTokenClient.requestAccessToken({prompt:driveAccessToken?"":"select_account"});
   });
 }
 async function driveListFolders(parentId){
@@ -956,7 +964,7 @@ async function syncCustomersFromDrive(){
   if(!cfg.clientId||!cfg.rootFolderId){openDriveSettings();return}
   if(!navigator.onLine){setDriveStatus("אין חיבור לאינטרנט. הרשימה המקומית עדיין זמינה.",true);return}
   try{
-    setDriveStatus("מתחבר ל־Google Drive…");
+    setDriveStatus("מתחבר ל־Google Drive… אם מופיעה אזהרת Google, לחץ על המשך.");
     if(!driveAccessToken)driveAccessToken=await requestDriveToken(cfg.clientId);
     setDriveStatus("קורא ערים ולקוחות…");
     const cities=await driveListFolders(cfg.rootFolderId);
