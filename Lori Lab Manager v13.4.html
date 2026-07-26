@@ -1,0 +1,2130 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#174b31">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Lori Lab">
+<title>Lori Lab Manager v13.4</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=David+Libre:wght@400;500;700&display=swap');
+*{box-sizing:border-box}
+:root{--green:#174b31;--gold:#c9a12d;--bg:#eef3ef}
+html,body{margin:0;background:var(--bg);font-family:"David Libre",David,serif;color:#173b2a}
+.app{max-width:620px;margin:auto;padding:14px}
+.card{background:#fff;border-radius:16px;padding:18px;box-shadow:0 8px 26px rgba(0,0,0,.12)}
+h1{margin:0 0 18px;text-align:center;font-size:24px;color:var(--green);border-bottom:3px solid var(--gold);padding-bottom:11px}
+.field{margin-bottom:12px}
+label{display:block;font-weight:700;margin-bottom:6px}
+input,textarea{width:100%;border:1px solid #b8c6bd;border-radius:10px;padding:12px;font-size:17px;font-family:"David Libre",David,serif;background:#fff}
+textarea{min-height:72px;resize:vertical}
+.sex{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sex label{margin:0;border:2px solid #d1dbd4;border-radius:10px;padding:12px;text-align:center;font-size:18px}
+.sex input{width:auto;margin-left:6px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+button{border:0;border-radius:10px;padding:14px;font-size:17px;font-weight:700;cursor:pointer}
+.primary{background:var(--green);color:#fff}
+.secondary{background:#e7efe9;color:var(--green)}
+.preview-card{margin-top:14px;background:#dde6df;border-radius:14px;padding:8px;overflow:auto}
+canvas{display:block;width:100%;height:auto;background:white;box-shadow:0 6px 20px rgba(0,0,0,.14)}
+.note{font-size:13px;line-height:1.5;color:#56665d;margin-top:12px}
+@page{size:A4;margin:0}
+@media print{
+  body{background:#fff}
+  .app>.card,.note{display:none!important}
+  .app{max-width:none;padding:0;margin:0}
+  .preview-card{margin:0;padding:0;background:#fff;border-radius:0;overflow:visible}
+  canvas{width:210mm!important;height:297mm!important;box-shadow:none!important}
+}
+
+.topbar{background:#fff;border-radius:16px;padding:14px;margin-bottom:14px;box-shadow:0 6px 20px rgba(0,0,0,.1)}
+.topbar h1{margin:0 0 4px;text-align:center;color:var(--green);font-size:28px}
+.version-badge{text-align:center;font:700 13px Arial,sans-serif;color:#7b6a2e;margin-bottom:12px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tab{background:#e8efe9;color:var(--green);padding:10px 6px;font-size:15px}
+.tab.active{background:var(--green);color:#fff}
+.screen{display:none}
+.screen.active{display:block}
+.diseases-card{padding:10px}
+.diseases-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.diseases-frame{width:100%;height:82vh;min-height:720px;border:1px solid #cbd8cf;border-radius:12px;background:#fff}
+@media(max-width:480px){.diseases-frame{height:78vh;min-height:620px}}
+
+h2{margin:0 0 14px;color:var(--green)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+select{width:100%;border:1px solid #b8c6bd;border-radius:10px;padding:12px;font-size:17px;font-family:"David Libre",David,serif;background:#fff}
+.autocomplete-wrap{position:relative}
+.autocomplete-list{position:absolute;z-index:50;top:calc(100% + 4px);right:0;left:0;max-height:260px;overflow:auto;background:#fff;border:1px solid #b8c6bd;border-radius:10px;box-shadow:0 10px 24px rgba(0,0,0,.16)}
+.autocomplete-item{padding:11px 12px;cursor:pointer;border-bottom:1px solid #edf1ee}
+.autocomplete-item:last-child{border-bottom:0}
+.autocomplete-item:hover,.autocomplete-item.active{background:#e7efe9}
+.autocomplete-name{font-weight:700;color:var(--green)}
+.autocomplete-meta{font-size:13px;color:#657268;margin-top:2px;direction:ltr;text-align:right}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.small{padding:9px 12px;font-size:14px}
+.hidden{display:none!important}
+.list{margin-top:12px;display:grid;gap:10px}
+.list-item{border:1px solid #d5dfd8;border-radius:12px;padding:12px;background:#fafcfb}
+.list-title{font-size:19px;font-weight:700;color:var(--green)}
+.list-sub{font-size:14px;color:#657268;margin-top:4px}
+.list-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.list-actions button{padding:8px 10px;font-size:14px}
+.favorite-line{display:flex;align-items:center;gap:8px;margin:8px 0 4px}
+.favorite-line input{width:auto}
+.empty{padding:20px;text-align:center;color:#6f7d73}
+@media(max-width:480px){.grid2{grid-template-columns:1fr}.tabs{grid-template-columns:1fr 1fr}.tab{font-size:13px}.actions{grid-template-columns:1fr}.table-modal{padding:4px}.table-modal-card{margin:4px auto;padding:8px}.table-modal-head{font-size:17px}}
+@media print{
+  .topbar,.screen:not(#certificateScreen),#certificateScreen>.card{display:none!important}
+  #certificateScreen{display:block!important}
+}
+
+
+@media print{
+html,body{width:210mm!important;height:297mm!important;margin:0!important;padding:0!important;background:#fff!important}
+.topbar,#certificateScreen>.card,#customersScreen,#historyScreen,#reportScreen,#diseasesScreen{display:none!important}
+#certificateScreen,.preview-card{display:block!important;margin:0!important;padding:0!important;background:#fff!important;border:0!important;box-shadow:none!important}
+#certificate{display:block!important;width:210mm!important;height:297mm!important;max-width:none!important;box-shadow:none!important}
+}
+
+.table-modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;padding:12px;overflow:auto}
+.table-modal-card{max-width:900px;margin:10px auto;background:#fff;border-radius:16px;padding:12px}
+.table-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;font-size:20px;color:var(--green)}
+.table-preview-wrap{overflow:auto;background:#dfe5e1;border-radius:10px;padding:8px}
+#tablePreviewPages{display:grid;gap:14px} #tablePreviewPages canvas{display:block;width:100%;height:auto;background:#fff;box-shadow:0 4px 16px rgba(0,0,0,.18)}
+.customer-history-summary{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0 14px}
+.customer-history-stat{border:1px solid #d5dfd8;border-radius:12px;padding:12px;text-align:center;background:#fafcfb}
+.customer-history-stat strong{display:block;font-size:26px;color:var(--green)}
+.history-date-group{border:1px solid #d5dfd8;border-radius:12px;margin-bottom:10px;overflow:hidden;background:#fff}
+.history-date-head{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;border-radius:0;background:#e7efe9;color:var(--green);padding:10px 12px}
+.history-date-toggle{flex:1;display:flex;justify-content:space-between;align-items:center;gap:10px;background:transparent;color:inherit;padding:2px 0;border-radius:0;text-align:right}
+.history-date-share{flex:0 0 auto;background:#fff;color:var(--green);border:1px solid #cbd9cf;padding:8px 13px;border-radius:10px;font-weight:700}
+.history-files{padding:8px;display:grid;gap:8px}
+.history-file{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid #edf1ee;border-radius:10px;padding:10px}
+.history-file-name{min-width:0;overflow-wrap:anywhere}
+.history-loading{text-align:center;padding:22px;color:#657268}
+
+
+.report-periods{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.report-period-btn{background:#e7efe9;color:var(--green);border:1px solid #cbd9cf}
+.report-period-btn.active{background:var(--green);color:#fff}
+.report-summary{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0}
+.report-stat{border:1px solid #d5dfd8;border-radius:12px;padding:12px;text-align:center;background:#fafcfb}
+.report-stat strong{display:block;font-size:25px;color:var(--green)}
+.report-row{border:1px solid #d5dfd8;border-radius:12px;padding:12px;margin-bottom:9px;background:#fff}
+.report-row-head{display:flex;justify-content:space-between;gap:12px;align-items:center;font-weight:800;color:var(--green)}
+.report-row-dates{margin-top:7px;display:grid;gap:5px;color:#58645c}
+.report-date-line{display:flex;justify-content:space-between;gap:10px;border-top:1px solid #edf1ee;padding-top:5px}
+.report-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.report-filter{margin:10px 0}
+.report-print-title{display:none}
+@media print{
+ body{background:#fff!important}
+ .topbar,.tabs,.section-head button,.report-periods,.report-actions,.report-filter,.version-badge{display:none!important}
+ #reportScreen{display:block!important}
+ #reportScreen .card{box-shadow:none!important;border:none!important;margin:0!important;padding:0!important}
+ .report-print-title{display:block;text-align:center;margin:0 0 16px}
+ .report-row{break-inside:avoid;page-break-inside:avoid}
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+  <header class="topbar">
+    <h1>Lori Lab</h1>
+    <div class="version-badge">Manager v13.4</div>
+    <div class="tabs">
+      <button class="tab active" data-screen="certificateScreen">תעודה חדשה</button>
+      <button class="tab" data-screen="customersScreen">לקוחות</button>
+      <button class="tab" data-screen="historyScreen">היסטוריה</button>
+      <button class="tab" data-screen="reportScreen">דו״ח</button>
+      <button class="tab" data-screen="diseasesScreen">מחלות</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="certificateScreen" class="screen active">
+      <div class="card">
+        <h2>תעודה חדשה</h2>
+
+        <div class="grid2">
+          <div class="field">
+            <label for="citySelect">עיר</label>
+            <input id="citySelect" list="citiesList" placeholder="בחר או הקלד עיר" autocomplete="off">
+            <datalist id="citiesList"></datalist>
+          </div>
+          <div class="field autocomplete-wrap">
+            <label for="clientSearch">לקוח</label>
+            <input id="clientSearch" placeholder="חיפוש לפי שם או מספר טלפון" autocomplete="off">
+            <input id="clientSelect" type="hidden">
+            <div id="clientSuggestions" class="autocomplete-list hidden"></div>
+          </div>
+        </div>
+
+        <div class="field"><label for="owner">שם הבעלים</label><input id="owner"></div>
+        <div class="field"><label for="sender">שם השולח</label><input id="sender"></div>
+        <div class="field"><label for="birdType">סוג</label><input id="birdType" list="birdTypesList" placeholder="בחר או הקלד סוג" autocomplete="off"><datalist id="birdTypesList"></datalist></div>
+        <div class="field"><label for="idNumber">מספר זיהוי</label><input id="idNumber"></div>
+        <div class="field"><label for="description">תיאור</label><textarea id="description"></textarea></div>
+        <div class="field"><label for="date">תאריך</label><input id="date" type="date"></div>
+
+        <div class="field">
+          <label>תוצאת זיהוי מין</label>
+          <div class="sex">
+            <label><input type="radio" name="sex" value="male"> ♂ זכר</label>
+            <label><input type="radio" name="sex" value="female" checked> ♀ נקבה</label>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="primary" onclick="printCertificate()">🖨️ הדפס תעודה</button>
+          <button class="primary" onclick="saveCertificatePdf()">💾 שמור PDF</button>
+          <button class="primary" onclick="createClientTablePdf()">📊 טבלה</button>
+          <button class="secondary" onclick="saveRecord()">📋 שמור ברשומות</button>
+          <button class="secondary" onclick="clearForm()">ניקוי</button>
+        </div>
+        <p class="note">כפתור „טבלה” יוצר PDF מסכם לכל התעודות השמורות של הלקוח באותו תאריך.</p>
+      </div>
+
+      <section class="preview-card">
+        <canvas id="certificate" width="1024" height="1448"></canvas>
+      </section>
+    </section>
+
+    <section id="customersScreen" class="screen">
+      <div class="card">
+        <div class="section-head">
+          <h2>ניהול לקוחות</h2>
+          <button class="primary small" onclick="openCustomerForm()">＋ לקוח חדש</button>
+        </div>
+        <div class="actions drive-actions">
+          <button class="primary" onclick="syncCustomersFromDrive()">☁️ סנכרן לקוחות מ־Drive</button>
+          <button class="secondary" onclick="openDriveSettings()">⚙️ הגדרת Drive</button>
+          <button class="secondary" onclick="chooseLocalLoriLabFolder()">📁 בחר תיקיית LoriLab בטלפון</button>
+        </div>
+        <div id="driveSyncStatus" class="note">לא בוצע סנכרון מ־Drive.</div>
+        <div id="localFolderStatus" class="note">לא נבחרה תיקייה מקומית.</div>
+        <input id="customerSearch" placeholder="חיפוש לפי עיר או לקוח" oninput="renderCustomers()">
+        <div id="customersList" class="list"></div>
+      </div>
+
+      <div id="customerFormCard" class="card hidden">
+        <h2 id="customerFormTitle">לקוח חדש</h2>
+        <input type="hidden" id="customerId">
+        <div class="field"><label>עיר</label><input id="customerCity"></div>
+        <div class="field"><label>שם הלקוח</label><input id="customerName"></div>
+        <div class="field"><label>טלפון</label><input id="customerPhone"></div>
+        <div class="field"><label>אימייל</label><input id="customerEmail"></div>
+        <div class="field"><label>הערות</label><textarea id="customerNotes"></textarea></div>
+        <label class="favorite-line"><input type="checkbox" id="customerFavorite"> ⭐ לקוח מועדף</label>
+        <div class="actions">
+          <button class="primary" onclick="saveCustomer()">שמור לקוח</button>
+          <button class="secondary" onclick="closeCustomerForm()">ביטול</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="historyScreen" class="screen">
+      <div class="card">
+        <div class="section-head">
+          <h2>היסטוריית בדיקות</h2>
+          <button class="secondary small" onclick="exportHistoryCsv()">ייצוא CSV</button>
+        </div>
+        <input id="historySearch" placeholder="חיפוש לפי לקוח, סוג או מספר זיהוי" oninput="renderHistory()">
+        <div id="historyList" class="list"></div>
+      </div>
+    </section>
+
+
+    <section id="reportScreen" class="screen">
+      <div class="card">
+        <div class="section-head">
+          <h2>דו״ח בדיקות</h2>
+          <button class="secondary small" onclick="loadDriveReport(true)">↻ רענון</button>
+        </div>
+        <div class="report-periods">
+          <button class="report-period-btn active" data-period="year" onclick="setReportPeriod('year',this)">שנה</button>
+          <button class="report-period-btn" data-period="month" onclick="setReportPeriod('month',this)">חודש</button>
+          <button class="report-period-btn" data-period="week" onclick="setReportPeriod('week',this)">שבוע</button>
+          <button class="report-period-btn" data-period="day" onclick="setReportPeriod('day',this)">יום</button>
+        </div>
+        <div class="report-filter">
+          <label for="reportCustomerFilter">לקוח</label>
+          <select id="reportCustomerFilter" onchange="renderDriveReport()">
+            <option value="">כל הלקוחות</option>
+          </select>
+        </div>
+        <div class="report-actions">
+          <button class="secondary" onclick="printDriveReport()">🖨️ הדפסה</button>
+          <button class="primary" onclick="createDriveReportPdf()">📄 הפקת PDF</button>
+        </div>
+        <div id="reportPrintTitle" class="report-print-title"></div>
+        <div id="reportPeriodLabel" class="note"></div>
+        <div id="reportContent" class="history-loading">לחץ על רענון כדי לקרוא את הנתונים מ־Google Drive.</div>
+      </div>
+    </section>
+
+    <section id="diseasesScreen" class="screen">
+      <div class="card diseases-card">
+        <div class="diseases-toolbar">
+          <h2 style="margin:0">תעודת מחלות</h2>
+          <button class="secondary small" onclick="document.getElementById('diseasesFrame').contentWindow.location.reload()">↻ רענון</button>
+        </div>
+        <iframe
+          id="diseasesFrame"
+          class="diseases-frame"
+          src="./diseases.html"
+          title="תעודת מחלות Lori Lab"
+          loading="lazy">
+        </iframe>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="driveSettingsModal" class="table-modal hidden">
+  <div class="table-modal-card" style="max-width:620px">
+    <div class="table-modal-head">
+      <h3>הגדרת Google Drive</h3>
+      <button class="secondary small" onclick="closeDriveSettings()">✕</button>
+    </div>
+    <div class="field">
+      <label>Google OAuth Client ID</label>
+      <input id="driveClientId" dir="ltr" placeholder="...apps.googleusercontent.com">
+    </div>
+    <div class="field">
+      <label>קישור או מזהה של תיקיית Lori Lab</label>
+      <input id="driveRootFolder" dir="ltr" placeholder="https://drive.google.com/drive/folders/...">
+    </div>
+    <p class="note">האפליקציה קוראת רק שמות תיקיות: עיר ← לקוח. ההגדרה נשמרת בטלפון בלבד.</p>
+    <div class="actions">
+      <button class="primary" onclick="saveDriveSettings()">שמור הגדרה</button>
+      <button class="secondary" onclick="closeDriveSettings()">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<div id="customerHistoryModal" class="table-modal hidden">
+  <div class="table-modal-card" style="max-width:760px">
+    <div class="table-modal-head">
+      <strong id="customerHistoryTitle">היסטוריית לקוח</strong>
+      <button class="secondary small" onclick="closeCustomerHistory()">✕</button>
+    </div>
+    <div id="customerHistoryContent" class="history-loading">טוען נתונים מ־Google Drive…</div>
+  </div>
+</div>
+
+<div id="tablePreviewModal" class="table-modal hidden">
+  <div class="table-modal-card">
+    <div class="table-modal-head">
+      <strong>תצוגה מקדימה של הטבלה</strong>
+      <button class="secondary small" onclick="closeTablePreview()">✕</button>
+    </div>
+    <div class="table-preview-wrap">
+      <div id="tablePreviewPages"></div>
+    </div>
+    <div class="actions">
+      <button class="primary" onclick="saveCurrentTablePdf()">💾 שמור / שתף PDF</button>
+      <button class="secondary" onclick="closeTablePreview()">חזרה</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+const FEMALE_BG="./certificate-female.webp";
+const MALE_BG="./certificate-male.webp";
+
+const canvas=document.getElementById("certificate");
+const ctx=canvas.getContext("2d");
+const imgs={female:new Image(),male:new Image()};
+imgs.female.src=FEMALE_BG;
+imgs.male.src=MALE_BG;
+
+document.getElementById("date").valueAsDate=new Date();
+
+function getSex(){return document.querySelector('input[name="sex"]:checked').value}
+function v(id){return document.getElementById(id).value.trim()}
+function fDate(x){if(!x)return"";const [y,m,d]=x.split("-");return `${d}/${m}/${y}`}
+
+function drawTextRTL(text,x,y,maxWidth,size=22,align="right"){
+  if(!text)return;
+  ctx.save();
+  ctx.direction="rtl";
+  ctx.textAlign=align;
+  ctx.textBaseline="middle";
+  ctx.fillStyle="#174b31";
+  ctx.font=`700 ${size}px "David Libre", David, serif`;
+  while(ctx.measureText(text).width>maxWidth && size>14){
+    size--;ctx.font=`700 ${size}px "David Libre", David, serif`;
+  }
+  ctx.fillText(text,x,y,maxWidth);
+  ctx.restore();
+}
+function drawDate(text,x,y){
+  ctx.save();
+  ctx.direction="ltr";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.fillStyle="#174b31";
+  ctx.font='500 18px "David Libre", David, serif';
+  ctx.fillText(text,x,y);
+  ctx.restore();
+}
+function drawValue(text,x,y,maxWidth,size=21){
+  if(!text)return;
+  ctx.save();
+  ctx.direction="rtl";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.fillStyle="#174b31";
+  ctx.font=`700 ${size}px "David Libre", David, serif`;
+  while(ctx.measureText(text).width>maxWidth && size>14){
+    size--;
+    ctx.font=`700 ${size}px "David Libre", David, serif`;
+  }
+  ctx.fillText(text,x,y,maxWidth);
+  ctx.restore();
+}
+async function redraw(){
+  const img=imgs[getSex()];
+  if(!img.complete) await new Promise(r=>img.onload=r);
+  ctx.clearRect(0,0,1024,1448);
+  ctx.drawImage(img,0,0,1024,1448);
+
+  const d=fDate(document.getElementById("date").value);
+
+  ctx.save();
+  ctx.fillStyle="#fff";
+  ctx.font='500 21px "David Libre", David, serif';
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.fillText(d,164,360);
+  ctx.restore();
+
+  // פרטי לקוח – הערכים נשארים משמאל לתוויות הקבועות
+  drawTextRTL(v("owner"),815,389,205,21);
+  drawTextRTL(v("sender"),815,423,205,21);
+
+  // פרטי הנבדק – הערכים ממורכזים בעמודה השמאלית ללא מסכת רקע
+  drawValue(v("birdType"),690,632,180,21);
+  drawValue(v("idNumber"),690,687,180,21);
+  drawValue(v("description"),690,744,180,21);
+
+  // תאריכים בטבלת התוצאות – מוזזים שמאלה מהאייקון
+  drawDate(d,548,928);
+  drawDate(d,548,988);
+}
+
+["owner","sender","birdType","idNumber","description","date"].forEach(id=>{
+  document.getElementById(id).addEventListener("input",redraw);
+});
+document.querySelectorAll('input[name="sex"]').forEach(el=>el.addEventListener("change",redraw));
+imgs.female.onload=redraw;
+imgs.male.onload=redraw;
+
+function validate(){
+  // שדות התעודה אינם שדות חובה. ניתן להפיק תעודה גם כשחלק מהמידע אינו ידוע.
+  return true;
+}
+
+function hasCurrentTestData(){
+  return ["birdType","idNumber","description"].some(id=>v(id));
+}
+function safeFilePart(text){
+  return String(text || "")
+    .normalize("NFC")
+    .trim()
+    // גרש וגרשיים בתוך שמות עבריים עלולים להשתבש בשם הקובץ באנדרואיד.
+    // גרסה v11.1: הלוכסן / נשאר כפי שהוקלד כדי לבדוק את התנהגות Chrome ו-Drive.
+    .replace(/[\'׳״“”‘’]/g, "")
+    .replace(/[:*?"<>|#%&{}$!@+=`~]/g, " ")
+    .replace(/[‎‏‪-‮⁦-⁩]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildCertificateFileName(){
+  const result = getSex() === "male" ? "זכר" : "נקבה";
+  const birdType = safeFilePart(v("birdType"));
+  const description = safeFilePart(v("description"));
+  const idNumber = safeFilePart(v("idNumber"));
+  const details = [description, idNumber].filter(Boolean).join(" ");
+
+  if (birdType && details) return `${birdType} (${details}) ${result}`;
+  if (birdType) return `${birdType} ${result}`;
+  if (details) return `תעודה (${details}) ${result}`;
+  return `תעודה ${result}`;
+}
+
+function dataUrlToBytes(dataUrl){
+  const base64 = dataUrl.split(",")[1];
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+  return bytes;
+}
+
+function textBytes(text){
+  return new TextEncoder().encode(text);
+}
+
+function concatBytes(parts){
+  const total = parts.reduce((sum,p)=>sum+p.length,0);
+  const out = new Uint8Array(total);
+  let offset=0;
+  for(const p of parts){ out.set(p,offset); offset+=p.length; }
+  return out;
+}
+
+function makeSinglePagePdf(jpegBytes, imageWidth, imageHeight){
+  // A4 portrait in PDF points.
+  const pageW = 595.28;
+  const pageH = 841.89;
+
+  const objects = [];
+  objects[1] = textBytes("<< /Type /Catalog /Pages 2 0 R >>");
+  objects[2] = textBytes("<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+  objects[3] = textBytes(
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] ` +
+    `/Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>`
+  );
+
+  const content = textBytes(`q\n${pageW} 0 0 ${pageH} 0 0 cm\n/Im0 Do\nQ\n`);
+  objects[4] = concatBytes([
+    textBytes(`<< /Length ${content.length} >>\nstream\n`),
+    content,
+    textBytes("endstream")
+  ]);
+
+  objects[5] = concatBytes([
+    textBytes(
+      `<< /Type /XObject /Subtype /Image /Width ${imageWidth} /Height ${imageHeight} ` +
+      `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`
+    ),
+    jpegBytes,
+    textBytes("\nendstream")
+  ]);
+
+  const chunks = [textBytes("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n")];
+  const offsets = [0];
+  let position = chunks[0].length;
+
+  for(let i=1;i<=5;i++){
+    offsets[i] = position;
+    const obj = concatBytes([
+      textBytes(`${i} 0 obj\n`),
+      objects[i],
+      textBytes("\nendobj\n")
+    ]);
+    chunks.push(obj);
+    position += obj.length;
+  }
+
+  const xrefOffset = position;
+  let xref = "xref\n0 6\n0000000000 65535 f \n";
+  for(let i=1;i<=5;i++){
+    xref += String(offsets[i]).padStart(10,"0") + " 00000 n \n";
+  }
+  xref += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  chunks.push(textBytes(xref));
+
+  return new Blob([concatBytes(chunks)], {type:"application/pdf"});
+}
+
+
+function wrapCanvasText(ctx, text, maxWidth){
+  const words = String(text || "").split(/\s+/);
+  const lines = [];
+  let line = "";
+  for(const word of words){
+    const test = line ? line + " " + word : word;
+    if(ctx.measureText(test).width > maxWidth && line){
+      lines.push(line);
+      line = word;
+    }else{
+      line = test;
+    }
+  }
+  if(line) lines.push(line);
+  return lines.length ? lines : [""];
+}
+
+async function shareOrDownloadPdf(pdfBlob, filename){
+  const file = new File([pdfBlob], filename, {type:"application/pdf"});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{
+      await navigator.share({files:[file], title:filename});
+      return;
+    }catch(err){
+      if(err && err.name === "AbortError") return;
+    }
+  }
+  const url = URL.createObjectURL(pdfBlob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+
+
+
+let currentTablePdfBlob = null;
+let currentTablePdfName = "";
+
+function closeTablePreview(){
+  document.getElementById("tablePreviewModal").classList.add("hidden");
+  document.body.style.overflow="";
+}
+
+async function loadTableLogo(){
+  return await new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.onload=async()=>{try{if(img.decode)await img.decode()}catch(e){} resolve(img)};
+    img.onerror=reject;
+    img.src="./table-logo.webp";
+  });
+}
+
+function makeMultiPagePdf(pageImages, pageWidth, pageHeight){
+  // A4 לאורך (Portrait) — לא רוחב.
+  const pageW = 595.28;
+  const pageH = 841.89;
+  const objects = {};
+  let objNo = 1;
+
+  const catalogNo = objNo++;
+  const pagesNo = objNo++;
+  const pageNos = [];
+  const contentNos = [];
+  const imageNos = [];
+
+  for(let i=0;i<pageImages.length;i++){
+    pageNos.push(objNo++);
+    contentNos.push(objNo++);
+    imageNos.push(objNo++);
+  }
+
+  objects[catalogNo] = textBytes(`<< /Type /Catalog /Pages ${pagesNo} 0 R >>`);
+  objects[pagesNo] = textBytes(
+    `<< /Type /Pages /Kids [${pageNos.map(n=>`${n} 0 R`).join(" ")}] /Count ${pageNos.length} >>`
+  );
+
+  for(let i=0;i<pageImages.length;i++){
+    objects[pageNos[i]] = textBytes(
+      `<< /Type /Page /Parent ${pagesNo} 0 R /MediaBox [0 0 ${pageW} ${pageH}] ` +
+      `/Resources << /XObject << /Im${i} ${imageNos[i]} 0 R >> >> /Contents ${contentNos[i]} 0 R >>`
+    );
+
+    const content = textBytes(`q\n${pageW} 0 0 ${pageH} 0 0 cm\n/Im${i} Do\nQ\n`);
+    objects[contentNos[i]] = concatBytes([
+      textBytes(`<< /Length ${content.length} >>\nstream\n`),
+      content,
+      textBytes("endstream")
+    ]);
+
+    const jpg = pageImages[i];
+    objects[imageNos[i]] = concatBytes([
+      textBytes(
+        `<< /Type /XObject /Subtype /Image /Width ${pageWidth} /Height ${pageHeight} ` +
+        `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`
+      ),
+      jpg,
+      textBytes("\nendstream")
+    ]);
+  }
+
+  const chunks=[textBytes("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n")];
+  const offsets=[0];
+  let position=chunks[0].length;
+  const maxObj=objNo-1;
+
+  for(let i=1;i<=maxObj;i++){
+    offsets[i]=position;
+    const obj=concatBytes([textBytes(`${i} 0 obj\n`),objects[i],textBytes("\nendobj\n")]);
+    chunks.push(obj);
+    position+=obj.length;
+  }
+
+  const xrefOffset=position;
+  let xref=`xref\n0 ${maxObj+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<=maxObj;i++){
+    xref+=String(offsets[i]).padStart(10,"0")+" 00000 n \n";
+  }
+  xref+=`trailer\n<< /Size ${maxObj+1} /Root ${catalogNo} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  chunks.push(textBytes(xref));
+
+  return new Blob([concatBytes(chunks)],{type:"application/pdf"});
+}
+
+function drawRoundedRect(ctx,x,y,w,h,r,fill,stroke){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  if(fill){ctx.fillStyle=fill;ctx.fill();}
+  if(stroke){ctx.strokeStyle=stroke;ctx.stroke();}
+}
+
+function fitText(ctx,text,maxWidth,startSize,minSize=16,weight=500){
+  let size=startSize;
+  do{
+    ctx.font=`${weight} ${size}px "David Libre", David, serif`;
+    if(ctx.measureText(String(text)).width<=maxWidth) break;
+    size--;
+  }while(size>minSize);
+  return size;
+}
+
+async function createClientTablePdf(){
+  const chosenDate=document.getElementById("date").value;
+  const selectedCustomer=readJson(DB_KEYS.customers,[]).find(x=>x.id===clientSelect.value);
+  const clientName=selectedCustomer?.name||v("sender");
+
+  if(!chosenDate){alert("יש לבחור תאריך");return;}
+  if(!clientName){alert("יש לבחור לקוח או למלא שם שולח");return;}
+
+  // הטופס הנוכחי יצורף רק כאשר הוזן בו לפחות פרט אחד של הבדיקה.
+  if(hasCurrentTestData()) saveCurrentRecord(false);
+
+  const rows=readJson(DB_KEYS.history,[])
+    .filter(r=>r.date===chosenDate&&r.client===clientName)
+    .sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""));
+
+  if(!rows.length){alert("לא נמצאו תעודות שמורות ללקוח בתאריך שנבחר");return;}
+
+  const maleCount=rows.filter(r=>r.result==="זכר").length;
+  const femaleCount=rows.filter(r=>r.result==="נקבה").length;
+  const reportNo=`LL-${chosenDate.replaceAll("-","")}-${String(rows.length).padStart(3,"0")}`;
+
+  const pageW=1240,pageH=1754;
+  const rowsPerPage=18;
+  const totalPages=Math.ceil(rows.length/rowsPerPage);
+  const pages=[];
+  const logo=await loadTableLogo().catch(()=>null);
+  const shown=value=>String(value||"").trim()||"—";
+
+  const drawInfoCard=(x,px,py,pw,ph,label,value,valueColor="#174b31")=>{
+    x.save();
+    x.shadowColor="rgba(13,64,43,.10)";x.shadowBlur=14;x.shadowOffsetY=5;
+    drawRoundedRect(x,px,py,pw,ph,18,"#ffffff",null);
+    x.restore();
+    x.lineWidth=2;drawRoundedRect(x,px,py,pw,ph,18,null,"#d8bd63");
+    x.textAlign="right";
+    x.fillStyle="#758078";
+    x.font='700 19px "David Libre", David, serif';
+    x.fillText(label,px+pw-24,py+25);
+    x.fillStyle=valueColor;
+    const size=fitText(x,shown(value),pw-48,29,17,700);
+    x.font=`700 ${size}px "David Libre", David, serif`;
+    x.fillText(shown(value),px+pw-24,py+62,pw-48);
+  };
+
+  const drawCenteredStat=(x,px,py,pw,label,value,valueColor)=>{
+    x.save();
+    x.shadowColor="rgba(13,64,43,.09)";x.shadowBlur=12;x.shadowOffsetY=4;
+    drawRoundedRect(x,px,py,pw,92,18,"#ffffff",null);
+    x.restore();
+    x.lineWidth=2;drawRoundedRect(x,px,py,pw,92,18,null,"#d8bd63");
+    x.textAlign="center";
+    x.fillStyle="#69766e";x.font='700 18px "David Libre", David, serif';
+    x.fillText(label,px+pw/2,py+25);
+    x.fillStyle=valueColor;x.font='700 34px "David Libre", David, serif';
+    x.fillText(String(value),px+pw/2,py+63);
+  };
+
+  const drawCellText=(x,text,x0,y,w,h,align="center",color="#17231c",weight=500)=>{
+    const value=shown(text);
+    x.fillStyle=color;
+    const lines=wrapCanvasText(x,value,w-26).slice(0,2);
+    let size=fitText(x,lines.reduce((a,b)=>a.length>b.length?a:b,""),w-26,21,14,weight);
+    x.font=`${weight} ${size}px "David Libre", David, serif`;
+    x.textAlign=align;
+    const tx=align==="right"?x0+w-14:align==="left"?x0+14:x0+w/2;
+    const lineGap=size+4;
+    const startY=y+h/2-((lines.length-1)*lineGap)/2;
+    lines.forEach((line,i)=>x.fillText(line,tx,startY+i*lineGap,w-26));
+  };
+
+  for(let pageIndex=0;pageIndex<totalPages;pageIndex++){
+    const slice=rows.slice(pageIndex*rowsPerPage,(pageIndex+1)*rowsPerPage);
+    const c=document.createElement("canvas");
+    c.width=pageW;c.height=pageH;
+    const x=c.getContext("2d");
+    x.fillStyle="#fbfcfb";x.fillRect(0,0,pageW,pageH);
+    x.direction="rtl";x.textBaseline="middle";
+
+    // מסגרת עמוד וסרט מותג עליון.
+    x.strokeStyle="#d8c27a";x.lineWidth=3;x.strokeRect(32,32,pageW-64,pageH-64);
+    x.fillStyle="#064c35";x.fillRect(32,32,pageW-64,16);
+    x.fillStyle="#c9a12d";x.fillRect(32,48,pageW-64,6);
+
+    // סימן מים עדין מאחורי הטבלה.
+    if(logo){
+      x.save();x.globalAlpha=0.035;
+      const ratio=Math.min(760/logo.width,650/logo.height);
+      const ww=logo.width*ratio,hh=logo.height*ratio;
+      x.drawImage(logo,(pageW-ww)/2,690,ww,hh);
+      x.restore();
+    }
+
+    // לוגו וכותרת.
+    if(logo){
+      const ratio=Math.min(500/logo.width,190/logo.height);
+      const ww=logo.width*ratio,hh=logo.height*ratio;
+      x.drawImage(logo,(pageW-ww)/2,58,ww,hh);
+    }
+    x.textAlign="center";x.fillStyle="#064c35";
+    x.font='700 54px "David Libre", David, serif';
+    x.fillText("בדיקות מין לתוכים",pageW/2,270);
+    x.fillStyle="#8b6b18";x.font='500 23px "David Libre", David, serif';
+    x.fillText("דו״ח מסכם – בדיקות PCR לזיהוי מין",pageW/2,315);
+
+    drawInfoCard(x,870,70,300,98,"מספר דוח",reportNo);
+    drawInfoCard(x,620,355,550,96,"לקוח",clientName);
+    drawInfoCard(x,70,355,300,96,"תאריך",fDate(chosenDate));
+    drawCenteredStat(x,400,355,150,"זכרים",maleCount,"#1f5fc4");
+    drawCenteredStat(x,400,465,150,"נקבות",femaleCount,"#d32657");
+    drawCenteredStat(x,570,465,150,"סה״כ",rows.length,"#174b31");
+
+    // טבלת תוצאות – פריסה מלאה, ריווח מוגדל ושתי שורות טקסט בעת הצורך.
+    const left=70,top=590,tableWidth=1100,headerH=66,rowH=54;
+    const columns=[
+      {key:"index",label:"מס׳",width:75,align:"center"},
+      {key:"type",label:"סוג",width:220,align:"center"},
+      {key:"description",label:"תיאור",width:330,align:"right"},
+      {key:"identification",label:"מספר זיהוי",width:285,align:"center"},
+      {key:"result",label:"מין",width:190,align:"center"}
+    ];
+
+    drawRoundedRect(x,left,top,tableWidth,headerH,14,"#064c35","#064c35");
+    let cursor=left+tableWidth;
+    x.font='700 25px "David Libre", David, serif';x.fillStyle="#fff";x.textAlign="center";
+    columns.forEach((col,i)=>{
+      const x0=cursor-col.width;
+      if(i>0){x.strokeStyle="rgba(255,255,255,.38)";x.lineWidth=1;x.beginPath();x.moveTo(cursor,top+8);x.lineTo(cursor,top+headerH-8);x.stroke();}
+      x.fillText(col.label,x0+col.width/2,top+headerH/2);
+      cursor=x0;
+    });
+
+    let y=top+headerH;
+    slice.forEach((r,idx)=>{
+      const globalIndex=pageIndex*rowsPerPage+idx+1;
+      const values={index:String(globalIndex),type:r.type,description:r.description,identification:r.identification,result:r.result};
+      x.fillStyle=idx%2===0?"rgba(255,255,255,.95)":"rgba(238,246,240,.95)";
+      x.fillRect(left,y,tableWidth,rowH);
+      x.strokeStyle="#c7d3ca";x.lineWidth=1;x.strokeRect(left,y,tableWidth,rowH);
+
+      cursor=left+tableWidth;
+      columns.forEach((col,i)=>{
+        const x0=cursor-col.width;
+        if(i>0){x.beginPath();x.moveTo(cursor,y);x.lineTo(cursor,y+rowH);x.stroke();}
+        const value=values[col.key];
+        const isResult=col.key==="result";
+        const color=isResult?(value==="זכר"?"#1f5fc4":value==="נקבה"?"#d32657":"#17231c"):"#17231c";
+        drawCellText(x,value,x0,y,col.width,rowH,col.align,color,isResult?700:500);
+        cursor=x0;
+      });
+      y+=rowH;
+    });
+
+    // קו סיום לטבלה ללא שורות ריקות מיותרות.
+    x.strokeStyle="#064c35";x.lineWidth=3;
+    x.beginPath();x.moveTo(left,y);x.lineTo(left+tableWidth,y);x.stroke();
+
+    // תחתית מקצועית.
+    x.strokeStyle="#c9a12d";x.lineWidth=2;
+    x.beginPath();x.moveTo(70,1625);x.lineTo(1170,1625);x.stroke();
+    x.textAlign="center";x.fillStyle="#174b31";x.font='500 22px "David Libre", David, serif';
+    x.fillText("055-5710210",250,1662);
+    x.fillText("LoriLab2025@gmail.com",620,1662);
+    x.fillText("ישראל",990,1662);
+    x.fillStyle="#6d756f";x.font='500 16px Arial';
+    x.fillText("Lori Lab · PCR Sex Identification Summary",pageW/2,1700);
+    x.textAlign="right";x.font='500 18px "David Libre", David, serif';
+    x.fillText(`עמוד ${pageIndex+1} מתוך ${totalPages}`,1150,1700);
+
+    pages.push(c);
+  }
+
+  const holder=document.getElementById("tablePreviewPages");
+  holder.innerHTML="";
+  pages.forEach(c=>holder.appendChild(c));
+
+  const pageJpegs=pages.map(c=>dataUrlToBytes(c.toDataURL("image/jpeg",0.98)));
+  currentTablePdfBlob=makeMultiPagePdf(pageJpegs,pageW,pageH);
+  currentTablePdfName=`טבלה_${safeFilePart(clientName).replace(/\s+/g,"_")}_${fDate(chosenDate).replaceAll("/","-")}.pdf`;
+
+  document.getElementById("tablePreviewModal").classList.remove("hidden");
+  document.body.style.overflow="hidden";
+}
+
+async function saveCurrentTablePdf(){
+  if(!currentTablePdfBlob||!currentTablePdfName){
+    alert("אין טבלה מוכנה לשמירה");return;
+  }
+  await shareOrDownloadPdf(currentTablePdfBlob,currentTablePdfName);
+}
+
+async function saveCertificatePdf(){
+  if(!validate()) return;
+  if(!saveCurrentRecord(false)) return;
+  await redraw();
+
+  const filename = buildCertificateFileName() + ".pdf";
+  const jpegUrl = canvas.toDataURL("image/jpeg", 0.98);
+  const jpegBytes = dataUrlToBytes(jpegUrl);
+  const pdfBlob = makeSinglePagePdf(jpegBytes, canvas.width, canvas.height);
+
+  const selectedCustomer = readJson(DB_KEYS.customers,[]).find(x=>x.id===clientSelect.value);
+  const city = (selectedCustomer?.city || citySelect.value || "").trim();
+  const client = (selectedCustomer?.name || v("sender") || v("owner") || "").trim();
+  const certificateDate = date.value;
+  const cfg = getDriveConfig();
+
+  let savedLocal=false, savedDrive=false;
+  if(city && client && certificateDate && localRootHandle){
+    try{
+      savedLocal=await savePdfLocally(pdfBlob,filename,city,client,certificateDate);
+      if(savedLocal)setLocalFolderStatus(`נשמר בטלפון: ${city} ← ${client} ← ${fDate(certificateDate)}`);
+    }catch(err){console.error(err);setLocalFolderStatus("השמירה המקומית נכשלה: "+(err.message||"שגיאה"),true);}
+  }
+
+  if(city && client && certificateDate && cfg.rootFolderId){
+    try{
+      setDriveStatus("שומר את התעודה אוטומטית ב־Google Drive…");
+      await uploadCertificateToDrive(pdfBlob, filename, city, client, certificateDate, selectedCustomer);
+      savedDrive=true;
+      setDriveStatus(`נשמר ב־Drive: ${city} ← ${client} ← ${fDate(certificateDate)}`);
+    }catch(err){
+      console.error(err);
+      setDriveStatus(err.message || "השמירה ב־Drive נכשלה", true);
+    }
+  }
+
+  if(savedLocal||savedDrive){
+    const places=[savedLocal?"בטלפון":"",savedDrive?"ב־Google Drive":""].filter(Boolean).join(" וגם ");
+    alert(`התעודה נשמרה בהצלחה ${places}\n${city} ← ${client} ← ${fDate(certificateDate)}`);
+    return;
+  }
+  await shareOrDownloadPdf(pdfBlob, filename);
+}
+
+async function printCertificate(){
+  if(!validate()) return;
+  await redraw();
+
+  const originalTitle = document.title;
+  const fileName = buildCertificateFileName();
+  document.title = fileName;
+
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1200);
+  }, 250);
+}
+function saveForm(){
+  const data={
+    owner:v("owner"),sender:v("sender"),birdType:v("birdType"),
+    idNumber:v("idNumber"),description:v("description"),
+    date:document.getElementById("date").value,sex:getSex()
+  };
+  localStorage.setItem("loriLabForm",JSON.stringify(data));
+  alert("הפרטים נשמרו בטלפון");
+}
+function loadForm(){
+  const raw=localStorage.getItem("loriLabForm");
+  if(!raw){alert("לא נמצאו פרטים שמורים");return}
+  const d=JSON.parse(raw);
+  ["owner","sender","birdType","idNumber","description"].forEach(id=>{
+    document.getElementById(id).value=d[id]||"";
+  });
+  document.getElementById("date").value=d.date||"";
+  const r=document.querySelector(`input[name="sex"][value="${d.sex||"female"}"]`);
+  if(r)r.checked=true;
+  redraw();
+}
+function clearForm(){
+  ["owner","sender","birdType","idNumber","description","citySelect","clientSearch","clientSelect"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("date").valueAsDate=new Date();
+  document.querySelector('input[value="female"]').checked=true;
+  redraw();
+}
+
+
+</script>
+<script>
+const DB_KEYS={customers:"loriLabCustomersV1",history:"loriLabHistoryV1"};
+function readJson(k,f){try{return JSON.parse(localStorage.getItem(k))??f}catch(e){return f}}
+function writeJson(k,v){localStorage.setItem(k,JSON.stringify(v))}
+function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random()}
+function escapeHtml(s=""){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function seedCustomers(){if(readJson(DB_KEYS.customers,null))return;writeJson(DB_KEYS.customers,[
+{id:uid(),city:"אעבלין",name:"רושדי",phone:"",email:"",notes:"",favorite:true},
+{id:uid(),city:"אעבלין",name:"נדאר אבו גנימה",phone:"",email:"",notes:"",favorite:false},
+{id:uid(),city:"אעבלין",name:"איהאב שיך אחמד",phone:"",email:"",notes:"",favorite:false},
+{id:uid(),city:"אעבלין",name:"סאהר",phone:"",email:"",notes:"",favorite:true}] )}
+function switchScreen(id){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.dataset.screen===id));if(id==="customersScreen")renderCustomers();if(id==="historyScreen")renderHistory();if(id==="reportScreen")loadDriveReport(false)}
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>switchScreen(t.dataset.screen)))
+function refreshSelectors(){
+  const cs=readJson(DB_KEYS.customers,[]);
+  const cities=[...new Set(cs.map(c=>c.city).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
+  citiesList.innerHTML=cities.map(x=>`<option value="${escapeHtml(x)}"></option>`).join("");
+}
+function refreshBirdTypes(){
+  const types=[...new Set(readJson(DB_KEYS.history,[])
+    .map(r=>String(r.type||"").trim())
+    .filter(Boolean))]
+    .sort((a,b)=>a.localeCompare(b,"he"));
+  birdTypesList.innerHTML=types.map(x=>`<option value="${escapeHtml(x)}"></option>`).join("");
+}
+birdType.addEventListener("focus",refreshBirdTypes);
+function normalizeSearchText(value){
+  return String(value||"").normalize("NFC").replace(/\s+/g," ").trim().toLocaleLowerCase("he");
+}
+function matchingCustomers(query=""){
+  const q=normalizeSearchText(query);
+  const selectedCity=normalizeSearchText(citySelect.value);
+  let list=readJson(DB_KEYS.customers,[]);
+
+  // כאשר הוזנה עיר, מציגים אך ורק לקוחות מאותה עיר.
+  if(selectedCity) list=list.filter(c=>normalizeSearchText(c.city)===selectedCity);
+
+  // החיפוש מתבצע לפי שם או מספר טלפון בתוך העיר שנבחרה.
+  if(q) list=list.filter(c=>normalizeSearchText(`${c.name||""} ${c.phone||""}`).includes(q));
+
+  return list.sort((a,b)=>(+b.favorite-+a.favorite)||a.name.localeCompare(b.name,"he")).slice(0,30);
+}
+function renderClientSuggestions(){
+  const list=matchingCustomers(clientSearch.value);
+  const hasCity=!!normalizeSearchText(citySelect.value);
+  const emptyMessage=hasCity?"לא נמצאו לקוחות בעיר זו":"לא נמצאו לקוחות";
+  clientSuggestions.innerHTML=list.length?list.map(c=>`<div class="autocomplete-item" data-id="${c.id}"><div class="autocomplete-name">${c.favorite?"⭐ ":""}${escapeHtml(c.name)}</div><div class="autocomplete-meta">${escapeHtml(c.city||"")}${c.phone?" · "+escapeHtml(c.phone):""}</div></div>`).join(""):`<div class="autocomplete-item">${emptyMessage}</div>`;
+  clientSuggestions.classList.remove("hidden");
+}
+function chooseCustomer(id){
+  const c=readJson(DB_KEYS.customers,[]).find(x=>x.id===id);
+  if(!c)return;
+  clientSelect.value=c.id;
+  clientSearch.value=c.name;
+  citySelect.value=c.city||"";
+  sender.value=c.name||"";
+  clientSuggestions.classList.add("hidden");
+  redraw();
+}
+function loadClientsForCity(){
+  clientSelect.value="";
+  clientSearch.value="";
+}
+function selectCustomer(){
+  const c=readJson(DB_KEYS.customers,[]).find(x=>x.id===clientSelect.value);
+  if(c) citySelect.value=c.city||citySelect.value;
+}
+citySelect.addEventListener("input",()=>{
+  const c=readJson(DB_KEYS.customers,[]).find(x=>x.id===clientSelect.value);
+  if(c&&normalizeSearchText(citySelect.value)!==normalizeSearchText(c.city)){
+    clientSelect.value="";
+    clientSearch.value="";
+  }
+  // אם רשימת הלקוחות פתוחה, מסננים אותה מיד לפי העיר החדשה.
+  if(!clientSuggestions.classList.contains("hidden")) renderClientSuggestions();
+});
+clientSearch.addEventListener("focus",renderClientSuggestions);
+clientSearch.addEventListener("input",()=>{clientSelect.value="";renderClientSuggestions();});
+clientSuggestions.addEventListener("mousedown",e=>{const item=e.target.closest("[data-id]");if(item){e.preventDefault();chooseCustomer(item.dataset.id);}});
+document.addEventListener("click",e=>{if(!e.target.closest(".autocomplete-wrap"))clientSuggestions.classList.add("hidden")});
+function openCustomerForm(id=""){const c=readJson(DB_KEYS.customers,[]).find(x=>x.id===id);customerFormCard.classList.remove("hidden");customerFormTitle.textContent=c?"עריכת לקוח":"לקוח חדש";customerId.value=c?.id||"";customerCity.value=c?.city||"";customerName.value=c?.name||"";customerPhone.value=c?.phone||"";customerEmail.value=c?.email||"";customerNotes.value=c?.notes||"";customerFavorite.checked=!!c?.favorite;customerFormCard.scrollIntoView({behavior:"smooth"})}
+function closeCustomerForm(){customerFormCard.classList.add("hidden")}
+function saveCustomer(){const city=customerCity.value.trim(),name=customerName.value.trim();if(!city||!name){alert("יש למלא עיר ושם לקוח");return}const id=customerId.value||uid(),list=readJson(DB_KEYS.customers,[]),item={id,city,name,phone:customerPhone.value.trim(),email:customerEmail.value.trim(),notes:customerNotes.value.trim(),favorite:customerFavorite.checked};const i=list.findIndex(x=>x.id===id);if(i>=0)list[i]=item;else list.push(item);writeJson(DB_KEYS.customers,list);closeCustomerForm();renderCustomers();refreshSelectors()}
+function deleteCustomer(id){if(!confirm("למחוק את הלקוח?"))return;writeJson(DB_KEYS.customers,readJson(DB_KEYS.customers,[]).filter(x=>x.id!==id));renderCustomers();refreshSelectors()}
+function renderCustomers(){
+  const q=(customerSearch.value||"").trim().toLowerCase();
+  const list=readJson(DB_KEYS.customers,[])
+    .filter(c=>(c.city+" "+c.name+" "+(c.phone||"")).toLowerCase().includes(q))
+    .sort((a,b)=>(+b.favorite-+a.favorite)||a.city.localeCompare(b.city,"he")||a.name.localeCompare(b.name,"he"));
+  customersList.innerHTML=list.length?list.map(c=>`<div class="list-item">
+    <div class="list-title">${c.favorite?"⭐ ":""}${escapeHtml(c.name)}</div>
+    <div class="list-sub">עיר: ${escapeHtml(c.city)}${c.phone?` · ${escapeHtml(c.phone)}`:""}</div>
+    <div class="list-actions">
+      <button class="primary" onclick="openCustomerHistory('${c.id}')">📂 היסטוריה</button>
+      <button class="secondary" onclick="openCustomerForm('${c.id}')">עריכה</button>
+      <button class="secondary" onclick="deleteCustomer('${c.id}')">מחיקה</button>
+    </div>
+  </div>`).join(""):'<div class="empty">לא נמצאו לקוחות</div>';
+}
+function currentRecord(){
+  const c=readJson(DB_KEYS.customers,[]).find(x=>x.id===clientSelect.value);
+  return {
+    id:uid(),
+    date:date.value,
+    city:citySelect.value,
+    client:c?.name||v("sender"),
+    type:v("birdType"),
+    identification:v("idNumber"),
+    description:v("description"),
+    result:getSex()==="male"?"זכר":"נקבה",
+    createdAt:new Date().toISOString()
+  };
+}
+function saveCurrentRecord(showMessage=true){
+  const r=currentRecord();
+  if(!r.date){
+    if(showMessage) alert("יש לבחור תאריך");
+    return false;
+  }
+  if(!r.client){
+    if(showMessage) alert("יש לבחור לקוח או למלא שם שולח");
+    return false;
+  }
+  const list=readJson(DB_KEYS.history,[]);
+  const duplicate=list.some(x =>
+    x.date===r.date &&
+    x.client===r.client &&
+    x.identification===r.identification &&
+    x.type===r.type &&
+    x.description===r.description &&
+    x.result===r.result
+  );
+  if(!duplicate){
+    list.unshift(r);
+    writeJson(DB_KEYS.history,list);
+  }
+  if(showMessage) alert(duplicate ? "הרשומה כבר קיימת" : "הרשומה נשמרה בטלפון");
+  return true;
+}
+function saveRecord(){ saveCurrentRecord(true); }
+function renderHistory(){const q=(historySearch.value||"").trim().toLowerCase(),list=readJson(DB_KEYS.history,[]).filter(r=>[r.client,r.city,r.type,r.identification,r.description,r.result,r.date].join(" ").toLowerCase().includes(q));historyList.innerHTML=list.length?list.map(r=>`<div class="list-item"><div class="list-title">${escapeHtml(r.identification)} · ${escapeHtml(r.result)}</div><div class="list-sub">${escapeHtml(r.client)} · ${escapeHtml(r.city||"")} · ${escapeHtml(r.type)} · ${escapeHtml(r.date)}</div><div class="list-sub">${escapeHtml(r.description||"")}</div></div>`).join(""):'<div class="empty">אין עדיין רשומות</div>'}
+function exportHistoryCsv(){const rows=readJson(DB_KEYS.history,[]);if(!rows.length){alert("אין רשומות לייצוא");return}const all=[["תאריך","לקוח","עיר","סוג","מספר זיהוי","תיאור","תוצאה"],...rows.map(r=>[r.date,r.client,r.city,r.type,r.identification,r.description,r.result])],csv="\ufeff"+all.map(row=>row.map(x=>`"${String(x??"").replaceAll('"','""')}"`).join(",")).join("\n"),a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="LoriLab-results.csv";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
+
+
+const LOCAL_DB_NAME="loriLabLocalFolderDB";
+const LOCAL_DB_STORE="handles";
+const LOCAL_HANDLE_KEY="loriLabRoot";
+let localRootHandle=null;
+
+function openLocalHandleDb(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(LOCAL_DB_NAME,1);
+    req.onupgradeneeded=()=>req.result.createObjectStore(LOCAL_DB_STORE);
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function saveLocalHandle(handle){
+  const db=await openLocalHandleDb();
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction(LOCAL_DB_STORE,"readwrite");
+    tx.objectStore(LOCAL_DB_STORE).put(handle,LOCAL_HANDLE_KEY);
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+  });
+  db.close();
+}
+async function loadLocalHandle(){
+  try{
+    const db=await openLocalHandleDb();
+    const handle=await new Promise((resolve,reject)=>{
+      const tx=db.transaction(LOCAL_DB_STORE,"readonly");
+      const req=tx.objectStore(LOCAL_DB_STORE).get(LOCAL_HANDLE_KEY);
+      req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);
+    });
+    db.close();
+    return handle;
+  }catch(e){return null;}
+}
+async function ensureLocalPermission(handle,write=true){
+  if(!handle)return false;
+  const opts={mode:write?"readwrite":"read"};
+  if((await handle.queryPermission(opts))==="granted")return true;
+  return (await handle.requestPermission(opts))==="granted";
+}
+function setLocalFolderStatus(text,isError=false){
+  const el=document.getElementById("localFolderStatus");
+  if(!el)return;
+  el.textContent=text;
+  el.style.color=isError?"#b42318":"";
+}
+async function chooseLocalLoriLabFolder(){
+  if(!window.showDirectoryPicker){
+    alert("הדפדפן במכשיר הזה אינו מאפשר לאתר לבחור תיקייה קבועה. אפשר עדיין לשמור דרך חלון ההורדה, או להשתמש בגרסת Android בעתיד.");
+    return;
+  }
+  try{
+    const handle=await window.showDirectoryPicker({mode:"readwrite",startIn:"downloads"});
+    if(!await ensureLocalPermission(handle,true))throw new Error("לא ניתנה הרשאת כתיבה לתיקייה");
+    localRootHandle=handle;
+    await saveLocalHandle(handle);
+    setLocalFolderStatus(`תיקייה מקומית מחוברת: ${handle.name}`);
+    alert(`התיקייה ${handle.name} חוברה בהצלחה. מעכשיו תעודות חדשות יישמרו גם בטלפון.`);
+  }catch(err){
+    if(err?.name!=="AbortError"){
+      console.error(err);setLocalFolderStatus("חיבור התיקייה המקומית נכשל",true);
+      alert("חיבור התיקייה נכשל: "+(err.message||"שגיאה לא ידועה"));
+    }
+  }
+}
+async function initLocalFolder(){
+  localRootHandle=await loadLocalHandle();
+  if(!localRootHandle){setLocalFolderStatus("לא נבחרה תיקייה מקומית.");return;}
+  try{
+    const ok=await ensureLocalPermission(localRootHandle,false);
+    setLocalFolderStatus(ok?`תיקייה מקומית מחוברת: ${localRootHandle.name}`:`נדרשת הרשאה מחדש לתיקייה ${localRootHandle.name}`,!ok);
+  }catch(e){setLocalFolderStatus("לא ניתן לגשת לתיקייה המקומית",true);}
+}
+function cleanFolderPart(value){
+  return String(value||"").trim().replace(/[\\/:*?"<>|]/g,"-")||"ללא שם";
+}
+async function getLocalDateFolder(city,client,certificateDate,create=true){
+  if(!localRootHandle)return null;
+  if(!await ensureLocalPermission(localRootHandle,true))return null;
+  let dir=localRootHandle;
+  const localDateName=/^\d{4}-\d{2}-\d{2}$/.test(String(certificateDate||""))?fDate(certificateDate):String(certificateDate||"").trim();
+  for(const part of [cleanFolderPart(city),cleanFolderPart(client),cleanFolderPart(localDateName)]){
+    dir=await dir.getDirectoryHandle(part,{create});
+  }
+  return dir;
+}
+async function savePdfLocally(pdfBlob,filename,city,client,certificateDate){
+  const dir=await getLocalDateFolder(city,client,certificateDate,true);
+  if(!dir)return false;
+  const safeName=sharedDriveFilename(filename);
+  const fh=await dir.getFileHandle(safeName,{create:true});
+  const writable=await fh.createWritable();
+  await writable.write(pdfBlob);
+  await writable.close();
+  return true;
+}
+async function getLocalFilesForDate(city,client,certificateDate){
+  const dir=await getLocalDateFolder(city,client,certificateDate,false);
+  if(!dir)return [];
+  const files=[];
+  for await(const entry of dir.values()){
+    if(entry.kind==="file" && /\\.pdf$/i.test(entry.name)) files.push(await entry.getFile());
+  }
+  return files;
+}
+
+const DRIVE_CFG_KEY="loriLabDriveConfigV1";
+let driveTokenClient=null;
+let driveAccessToken="";
+
+function getDriveConfig(){return readJson(DRIVE_CFG_KEY,{clientId:"531999988443-kmg6n43gh2652gmun786jtgragr141bb.apps.googleusercontent.com",rootFolderId:""})}
+function extractDriveFolderId(value){
+  const text=String(value||"").trim();
+  const m=text.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  return m?m[1]:text;
+}
+function openDriveSettings(){
+  const cfg=getDriveConfig();
+  driveClientId.value=cfg.clientId||"";
+  driveRootFolder.value=cfg.rootFolderId||"";
+  driveSettingsModal.classList.remove("hidden");
+}
+function closeDriveSettings(){driveSettingsModal.classList.add("hidden")}
+function saveDriveSettings(){
+  const clientId=driveClientId.value.trim();
+  const rootFolderId=extractDriveFolderId(driveRootFolder.value);
+  if(!clientId||!rootFolderId){alert("יש להזין Client ID וקישור לתיקיית Lori Lab");return}
+  writeJson(DRIVE_CFG_KEY,{clientId,rootFolderId});
+  driveTokenClient=null; driveAccessToken=""; driveFolderCache.clear();
+  closeDriveSettings();
+  driveSyncStatus.textContent="הגדרת Drive נשמרה. כעת לחץ על סנכרון.";
+}
+function setDriveStatus(text,isError=false){
+  driveSyncStatus.textContent=text;
+  driveSyncStatus.style.color=isError?"#a61b1b":"";
+}
+function requestDriveToken(clientId){
+  return new Promise((resolve,reject)=>{
+    if(!window.google?.accounts?.oauth2){reject(new Error("רכיב ההתחברות של Google עדיין לא נטען. בדוק חיבור לאינטרנט."));return}
+    driveTokenClient=google.accounts.oauth2.initTokenClient({
+      client_id:clientId,
+      scope:"https://www.googleapis.com/auth/drive",
+      callback:resp=>{
+        if(resp.error){
+          const details=resp.error_description||resp.error;
+          reject(new Error("התחברות Google נכשלה: "+details));
+          return;
+        }
+        if(!resp.access_token){reject(new Error("Google לא החזירה הרשאת גישה ל־Drive."));return}
+        resolve(resp.access_token);
+      }
+    });
+    driveTokenClient.requestAccessToken({prompt:driveAccessToken?"":"select_account"});
+  });
+}
+async function driveApi(url,options={}){
+  const res=await fetch(url,{
+    ...options,
+    headers:{Authorization:"Bearer "+driveAccessToken,...(options.headers||{})}
+  });
+  if(res.status===401){
+    driveAccessToken="";
+    throw new Error("פג תוקף ההרשאה ל־Drive. נסה שוב ואשר התחברות.");
+  }
+  if(!res.ok){
+    const t=await res.text();
+    throw new Error("שגיאת Drive: "+res.status+" "+t.slice(0,220));
+  }
+  return res;
+}
+function driveEscapeQueryName(name){
+  return String(name).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+}
+function normalizeDriveFolderName(value){
+  return String(value||"")
+    .normalize("NFKD")
+    // הסרת סימני כיוון, תווים נסתרים, ניקוד ערבי/עברי וטטוויל.
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g,"")
+    .replace(/[\u0591-\u05C7\u0610-\u061A\u0640\u064B-\u065F\u0670\u06D6-\u06ED]/g,"")
+    // איחוד וריאציות נפוצות באותיות ערביות לצורך השוואת שמות בלבד.
+    .replace(/[أإآٱ]/g,"ا")
+    .replace(/[ى]/g,"ي")
+    .replace(/[ؤ]/g,"و")
+    .replace(/[ئ]/g,"ي")
+    .replace(/ة/g,"ه")
+    .replace(/\s+/g," ")
+    .trim()
+    .toLocaleLowerCase("ar");
+}
+const driveFolderCache=new Map();
+const driveFolderPromises=new Map();
+function driveFolderKey(parentId,name){
+  return `${parentId}::${normalizeDriveFolderName(name)}`;
+}
+async function driveFindFolder(parentId,name){
+  const wanted=normalizeDriveFolderName(name);
+  let pageToken="";
+  do{
+    const params=new URLSearchParams({
+      q:`'${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields:"nextPageToken,files(id,name,createdTime)",
+      pageSize:"1000",
+      orderBy:"createdTime",
+      supportsAllDrives:"true",
+      includeItemsFromAllDrives:"true"
+    });
+    if(pageToken) params.set("pageToken",pageToken);
+    const res=await driveApi("https://www.googleapis.com/drive/v3/files?"+params);
+    const data=await res.json();
+    const matches=(data.files||[]).filter(file=>normalizeDriveFolderName(file.name)===wanted);
+    if(matches.length){
+      // אם כבר קיימות כפילויות ישנות, משתמשים תמיד בתיקייה הוותיקה ביותר.
+      matches.sort((a,b)=>String(a.createdTime||"").localeCompare(String(b.createdTime||"")));
+      return matches[0];
+    }
+    pageToken=data.nextPageToken||"";
+  }while(pageToken);
+  return null;
+}
+async function driveCreateFolder(parentId,name){
+  const cleanName=String(name||"").normalize("NFC").replace(/\s+/g," ").trim();
+  const res=await driveApi("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({name:cleanName,mimeType:"application/vnd.google-apps.folder",parents:[parentId]})
+  });
+  return await res.json();
+}
+async function driveEnsureFolder(parentId,name){
+  const key=driveFolderKey(parentId,name);
+  if(driveFolderCache.has(key)) return driveFolderCache.get(key);
+  if(driveFolderPromises.has(key)) return await driveFolderPromises.get(key);
+  const promise=(async()=>{
+    let folder=await driveFindFolder(parentId,name);
+    if(!folder){
+      folder=await driveCreateFolder(parentId,name);
+      // בדיקה חוזרת מונעת כפילות במקרה ששתי שמירות התחילו כמעט יחד.
+      const verified=await driveFindFolder(parentId,name);
+      if(verified) folder=verified;
+    }
+    driveFolderCache.set(key,folder);
+    return folder;
+  })();
+  driveFolderPromises.set(key,promise);
+  try{return await promise}
+  finally{driveFolderPromises.delete(key)}
+}
+async function driveFindPdf(parentId,name){
+  const params=new URLSearchParams({
+    q:`'${parentId}' in parents and name='${driveEscapeQueryName(name)}' and mimeType='application/pdf' and trashed=false`,
+    fields:"files(id,name)",
+    pageSize:"10",
+    supportsAllDrives:"true",
+    includeItemsFromAllDrives:"true"
+  });
+  const res=await driveApi("https://www.googleapis.com/drive/v3/files?"+params);
+  const data=await res.json();
+  return (data.files||[])[0]||null;
+}
+async function driveUploadPdf(parentId,filename,pdfBlob){
+  const existing=await driveFindPdf(parentId,filename);
+  const boundary="lori_lab_"+Date.now().toString(36);
+  const metadata=existing ? {name:filename} : {name:filename,parents:[parentId]};
+  const multipartBody=new Blob([
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,
+    JSON.stringify(metadata),
+    `\r\n--${boundary}\r\nContent-Type: application/pdf\r\n\r\n`,
+    pdfBlob,
+    `\r\n--${boundary}--`
+  ]);
+  const url=existing
+    ? `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart&supportsAllDrives=true`
+    : "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true";
+  const res=await driveApi(url,{
+    method:existing?"PATCH":"POST",
+    headers:{"Content-Type":"multipart/related; boundary="+boundary},
+    body:multipartBody
+  });
+  return await res.json();
+}
+async function uploadCertificateToDrive(pdfBlob,filename,city,client,certificateDate,customerRecord=null){
+  const cfg=getDriveConfig();
+  if(!cfg.clientId || !cfg.rootFolderId) throw new Error("חסרה הגדרת Google Drive.");
+  if(!navigator.onLine) throw new Error("אין חיבור לאינטרנט.");
+  if(!driveAccessToken) driveAccessToken=await requestDriveToken(cfg.clientId);
+
+  // ללקוח שסונכרן מ-Drive משתמשים ישירות במזהי התיקיות, ולא מחפשים לפי שם.
+  let cityFolder = customerRecord?.driveCityFolderId ? {id:customerRecord.driveCityFolderId,name:city} : null;
+  let clientFolder = customerRecord?.driveFolderId ? {id:customerRecord.driveFolderId,name:client} : null;
+  if(!cityFolder) cityFolder=await driveEnsureFolder(cfg.rootFolderId,city);
+  if(!clientFolder) clientFolder=await driveEnsureFolder(cityFolder.id,client);
+
+  // שומרים את המזהים ברשומת הלקוח כדי שכל שמירה עתידית תגיע לאותה תיקייה בוודאות.
+  if(customerRecord?.id && (!customerRecord.driveCityFolderId || !customerRecord.driveFolderId)){
+    const customers=readJson(DB_KEYS.customers,[]);
+    const idx=customers.findIndex(c=>c.id===customerRecord.id);
+    if(idx>=0){
+      customers[idx].driveCityFolderId=cityFolder.id;
+      customers[idx].driveFolderId=clientFolder.id;
+      writeJson(DB_KEYS.customers,customers);
+    }
+  }
+
+  const dateFolder=await driveEnsureFolder(clientFolder.id,fDate(certificateDate));
+  return await driveUploadPdf(dateFolder.id,filename,pdfBlob);
+}
+
+async function driveListFolders(parentId){
+  const out=[]; let pageToken="";
+  do{
+    const params=new URLSearchParams({
+      q:`'${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields:"nextPageToken,files(id,name)",
+      pageSize:"1000",
+      orderBy:"name",
+      supportsAllDrives:"true",
+      includeItemsFromAllDrives:"true"
+    });
+    if(pageToken)params.set("pageToken",pageToken);
+    const res=await fetch("https://www.googleapis.com/drive/v3/files?"+params,{headers:{Authorization:"Bearer "+driveAccessToken}});
+    if(res.status===401){driveAccessToken="";throw new Error("פג תוקף ההרשאה. לחץ שוב על סנכרון.")}
+    if(!res.ok){const t=await res.text();throw new Error("שגיאת Drive: "+res.status+" "+t.slice(0,160))}
+    const data=await res.json();out.push(...(data.files||[]));pageToken=data.nextPageToken||"";
+  }while(pageToken);
+  return out;
+}
+
+async function driveListPdfs(parentId){
+  const out=[]; let pageToken="";
+  do{
+    const params=new URLSearchParams({
+      q:`'${parentId}' in parents and mimeType='application/pdf' and trashed=false`,
+      fields:"nextPageToken,files(id,name,createdTime,modifiedTime,webViewLink,webContentLink,size)",
+      pageSize:"1000",orderBy:"name",supportsAllDrives:"true",includeItemsFromAllDrives:"true"
+    });
+    if(pageToken)params.set("pageToken",pageToken);
+    const res=await driveApi("https://www.googleapis.com/drive/v3/files?"+params);
+    const data=await res.json(); out.push(...(data.files||[])); pageToken=data.nextPageToken||"";
+  }while(pageToken);
+  return out;
+}
+function closeCustomerHistory(){
+  customerHistoryModal.classList.add("hidden");
+  document.body.style.overflow="";
+}
+function parseHistoryDate(name){
+  const text=String(name||"").trim();
+  let m=text.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2}|\d{4})$/);
+  if(m){
+    let year=Number(m[3]);
+    if(year<100) year+=2000;
+    const month=Number(m[2]),day=Number(m[1]);
+    const date=new Date(year,month-1,day);
+    if(date.getFullYear()===year&&date.getMonth()===month-1&&date.getDate()===day) return date.getTime();
+  }
+  m=text.match(/^(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})$/);
+  if(m){
+    const year=Number(m[1]),month=Number(m[2]),day=Number(m[3]);
+    const date=new Date(year,month-1,day);
+    if(date.getFullYear()===year&&date.getMonth()===month-1&&date.getDate()===day) return date.getTime();
+  }
+  return 0;
+}
+function formatHistoryDate(name){
+  const text=String(name||"").trim();
+  const m=text.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2}|\d{4})$/);
+  if(!m)return text;
+  return `${String(m[1]).padStart(2,"0")}.${String(m[2]).padStart(2,"0")}.${m[3]}`;
+}
+function toggleHistoryDate(button){
+  const files=button.closest(".history-date-head")?.nextElementSibling;
+  if(files)files.classList.toggle("hidden");
+}
+function openDrivePdf(url){
+  if(!url){alert("לא נמצא קישור לפתיחת הקובץ");return;}
+  window.open(url,"_blank","noopener");
+}
+async function shareDrivePdf(name,url){
+  if(!url){alert("לא נמצא קישור לשיתוף");return;}
+  try{
+    if(navigator.share){await navigator.share({title:name,text:name,url});return;}
+    await navigator.clipboard.writeText(url);
+    alert("הקישור הועתק");
+  }catch(err){if(err?.name!=="AbortError")window.open(url,"_blank","noopener");}
+}
+
+const customerHistoryShareGroups=new Map();
+const customerHistoryPreparedShares=new Map();
+function sharedDriveFilename(originalName){
+  let name=String(originalName||"תעודה.pdf").trim();
+  // Local storage must keep a real PDF extension.
+  name=name.replace(/[\/\\]/g,"／");
+  if(!/\.pdf$/i.test(name)) name += ".pdf";
+  return name||"תעודה.pdf";
+}
+function displayPdfName(name){return String(name||"").replace(/\.pdf$/i,"");}
+function shareDisplayFilename(originalName){
+  let name=displayPdfName(String(originalName||"תעודה").trim());
+  // Keep the original wording. Only make slashes safe for Android filenames.
+  // FULLWIDTH SOLIDUS stays full-height, unlike the small fraction slash.
+  name=name.replace(/[\/\\]/g,"／");
+  // Isolate numeric date-like runs so RTL text cannot reverse 2024/05.
+  name=name.replace(/\d+(?:[.／-]\d+)+/g,match=>`\u2066${match}\u2069`);
+  return name||"תעודה";
+}
+function makeSharePdfFile(file){
+  return new File([file],shareDisplayFilename(file.name),{type:"application/pdf",lastModified:file.lastModified||Date.now()});
+}
+async function downloadDrivePdfFile(file){
+  const res=await driveApi(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?alt=media`);
+  const blob=await res.blob();
+  return new File([blob],shareDisplayFilename(file.name),{type:"application/pdf"});
+}
+async function shareDriveDate(groupKey,button){
+  const group=customerHistoryShareGroups.get(groupKey);
+  if(!group||!group.files?.length){alert("לא נמצאו תעודות לשיתוף בתאריך זה");return;}
+  const title=`תעודות Lori Lab — ${formatHistoryDate(group.dateName)}`;
+  const shareText=`${group.files.length} תעודות מתאריך ${formatHistoryDate(group.dateName)}`;
+  let prepared=customerHistoryPreparedShares.get(groupKey);
+  if(!prepared?.files?.length && localRootHandle && group.city && group.client && group.dateName){
+    try{
+      const localFiles=await getLocalFilesForDate(group.city,group.client,group.dateName);
+      if(localFiles.length){
+        const shareFiles=localFiles.map(makeSharePdfFile);
+        prepared={files:shareFiles,preparedAt:Date.now(),source:"local"};
+        customerHistoryPreparedShares.set(groupKey,prepared);
+      }
+    }catch(e){console.warn("Local history unavailable",e);}
+  }
+
+  // Android/Chrome requires navigator.share() to run directly from a fresh tap.
+  // Therefore the first tap prepares the PDFs, and the second tap shares them.
+  if(prepared?.files?.length){
+    try{
+      if(navigator.share&&(!navigator.canShare||navigator.canShare({files:prepared.files}))){
+        await navigator.share({title,text:shareText,files:prepared.files});
+        return;
+      }
+      const links=group.files.map(f=>f.webViewLink||f.webContentLink).filter(Boolean);
+      if(navigator.share&&links.length){
+        await navigator.share({title,text:`${title}\n${links.join("\n")}`});
+        return;
+      }
+      if(links.length&&navigator.clipboard){
+        await navigator.clipboard.writeText(links.join("\n"));
+        alert("המכשיר אינו תומך בשיתוף כמה קובצי PDF יחד. קישורי כל התעודות הועתקו.");
+        return;
+      }
+      alert("המכשיר אינו תומך בשיתוף כמה קבצים יחד");
+    }catch(err){
+      if(err?.name!=="AbortError"){
+        console.error(err);
+        alert("שיתוף התעודות נכשל: "+(err.message||"שגיאה לא ידועה"));
+      }
+    }
+    return;
+  }
+
+  const oldText=button?.textContent||"שיתוף";
+  try{
+    if(button){button.disabled=true;button.textContent="מכין…";}
+    const files=[];
+    for(const file of group.files) files.push(await downloadDrivePdfFile(file));
+    customerHistoryPreparedShares.set(groupKey,{files,preparedAt:Date.now(),source:"drive"});
+    if(localRootHandle && group.city && group.client && group.dateName){
+      for(let i=0;i<files.length;i++){
+        try{
+          const originalName=group.files[i]?.name||files[i].name;
+          await savePdfLocally(files[i],originalName,group.city,group.client,group.dateName);
+        }catch(e){console.warn("Local cache save failed",e);}
+      }
+    }
+    if(button){
+      button.disabled=false;
+      button.textContent="שתף עכשיו";
+      button.dataset.ready="1";
+    }
+    alert("התעודות מוכנות. לחץ שוב על ‘שתף עכשיו’ כדי לפתוח את חלון השיתוף.");
+  }catch(err){
+    console.error(err);
+    customerHistoryPreparedShares.delete(groupKey);
+    if(button){button.disabled=false;button.textContent=oldText;delete button.dataset.ready;}
+    alert("הכנת התעודות לשיתוף נכשלה: "+(err.message||"שגיאה לא ידועה"));
+  }
+}
+async function openCustomerHistory(id){
+  const customer=readJson(DB_KEYS.customers,[]).find(c=>c.id===id);
+  if(!customer)return;
+  customerHistoryTitle.textContent=`היסטוריה — ${customer.name}`;
+  customerHistoryContent.innerHTML='<div class="history-loading">מתחבר ל־Google Drive וקורא את היסטוריית הלקוח…</div>';
+  customerHistoryModal.classList.remove("hidden");
+  document.body.style.overflow="hidden";
+  try{
+    const cfg=getDriveConfig();
+    if(!cfg.clientId||!cfg.rootFolderId) throw new Error("יש להגדיר תחילה את Google Drive");
+    if(!navigator.onLine) throw new Error("אין חיבור לאינטרנט");
+    if(!driveAccessToken) driveAccessToken=await requestDriveToken(cfg.clientId);
+    let clientFolderId=customer.driveFolderId;
+    if(!clientFolderId){
+      const cityFolder=await driveFindFolder(cfg.rootFolderId,customer.city);
+      if(!cityFolder) throw new Error("תיקיית העיר לא נמצאה ב־Drive");
+      const clientFolder=await driveFindFolder(cityFolder.id,customer.name);
+      if(!clientFolder) throw new Error("תיקיית הלקוח לא נמצאה ב־Drive");
+      clientFolderId=clientFolder.id;
+      const customers=readJson(DB_KEYS.customers,[]),idx=customers.findIndex(c=>c.id===id);
+      if(idx>=0){customers[idx].driveCityFolderId=cityFolder.id;customers[idx].driveFolderId=clientFolder.id;writeJson(DB_KEYS.customers,customers);}
+    }
+    const dateFolders=await driveListFolders(clientFolderId);
+    const groups=[];
+    for(const folder of dateFolders){
+      const files=await driveListPdfs(folder.id);
+      if(files.length)groups.push({folder,files});
+    }
+    groups.sort((a,b)=>parseHistoryDate(b.folder.name)-parseHistoryDate(a.folder.name)||String(b.folder.name).localeCompare(String(a.folder.name),"he"));
+    const total=groups.reduce((n,g)=>n+g.files.length,0);
+    const summary=`<div class="customer-history-summary">
+      <div class="customer-history-stat"><strong>${total}</strong><span>סה״כ בדיקות</span></div>
+      <div class="customer-history-stat"><strong>${groups.length}</strong><span>תאריכי בדיקה</span></div>
+    </div>`;
+    customerHistoryShareGroups.clear();
+    const details=groups.length?groups.map((g,i)=>{
+      const groupKey=`${g.folder.id}_${i}`;
+      customerHistoryShareGroups.set(groupKey,{dateName:g.folder.name,files:g.files,city:customer.city,client:customer.name});
+      return `<div class="history-date-group">
+      <div class="history-date-head">
+        <button class="history-date-toggle" onclick="toggleHistoryDate(this)"><span>📅 ${escapeHtml(formatHistoryDate(g.folder.name))}</span><strong>${g.files.length} בדיקות</strong></button>
+        <button class="history-date-share" onclick="shareDriveDate('${escapeHtml(groupKey)}',this)">שיתוף</button>
+      </div>
+      <div class="history-files ${i===0?"":"hidden"}">${g.files.map(f=>`<div class="history-file">
+        <div class="history-file-name">📄 ${escapeHtml(f.name)}</div>
+        <div class="list-actions" style="margin:0;flex-wrap:nowrap">
+          <button class="secondary small" onclick="openDrivePdf('${escapeHtml(f.webViewLink||f.webContentLink||"")}')">פתיחה</button>
+          <button class="secondary small" onclick="shareDrivePdf('${escapeHtml(f.name)}','${escapeHtml(f.webViewLink||f.webContentLink||"")}')">שיתוף</button>
+        </div>
+      </div>`).join("")}</div>
+    </div>`}).join(""):'<div class="empty">לא נמצאו תעודות PDF בתיקיית הלקוח</div>';
+    customerHistoryContent.innerHTML=`<div class="list-sub">${escapeHtml(customer.city)} · ${escapeHtml(customer.name)}</div>${summary}${details}`;
+  }catch(err){
+    console.error(err);
+    customerHistoryContent.innerHTML=`<div class="empty">${escapeHtml(err.message||"טעינת ההיסטוריה נכשלה")}</div>`;
+  }
+}
+
+async function syncCustomersFromDrive(){
+  const cfg=getDriveConfig();
+  if(!cfg.clientId||!cfg.rootFolderId){openDriveSettings();return}
+  if(!navigator.onLine){setDriveStatus("אין חיבור לאינטרנט. הרשימה המקומית עדיין זמינה.",true);return}
+  try{
+    setDriveStatus("מתחבר ל־Google Drive… אם מופיעה אזהרת Google, לחץ על המשך.");
+    if(!driveAccessToken)driveAccessToken=await requestDriveToken(cfg.clientId);
+    setDriveStatus("קורא ערים ולקוחות…");
+    const allCities=await driveListFolders(cfg.rootFolderId);
+    // במקרה שכבר יש כפילויות ישנות, משתמשים בתיקייה הוותיקה/הראשונה לכל שם מנורמל.
+    const cityMap=new Map();
+    for(const city of allCities){
+      const key=normalizeDriveFolderName(city.name);
+      if(!cityMap.has(key)) cityMap.set(key,city);
+    }
+    const cities=[...cityMap.values()];
+    const imported=[];
+    for(let i=0;i<cities.length;i++){
+      const city=cities[i];
+      setDriveStatus(`קורא ${city.name} (${i+1}/${cities.length})…`);
+      const allClients=await driveListFolders(city.id);
+      const clientMap=new Map();
+      for(const c of allClients){
+        const key=normalizeDriveFolderName(c.name);
+        if(!clientMap.has(key)) clientMap.set(key,c);
+      }
+      for(const c of clientMap.values()) imported.push({city:city.name,name:c.name,driveCityFolderId:city.id,driveFolderId:c.id});
+    }
+    const existing=readJson(DB_KEYS.customers,[]);
+    const byKey=new Map(existing.map((c,i)=>[normalizeDriveFolderName(c.city)+"\u0000"+normalizeDriveFolderName(c.name),i]));
+    let added=0,linked=0;
+    for(const x of imported){
+      const key=normalizeDriveFolderName(x.city)+"\u0000"+normalizeDriveFolderName(x.name);
+      const idx=byKey.get(key);
+      if(idx===undefined){
+        existing.push({id:uid(),city:x.city,name:x.name,phone:"",email:"",notes:"נוסף מ־Google Drive",favorite:false,driveImported:true,driveCityFolderId:x.driveCityFolderId,driveFolderId:x.driveFolderId});
+        byKey.set(key,existing.length-1);added++;
+      }else{
+        if(existing[idx].driveCityFolderId!==x.driveCityFolderId || existing[idx].driveFolderId!==x.driveFolderId) linked++;
+        existing[idx].driveCityFolderId=x.driveCityFolderId;
+        existing[idx].driveFolderId=x.driveFolderId;
+      }
+    }
+    writeJson(DB_KEYS.customers,existing);
+    driveFolderCache.clear();
+    localStorage.setItem("loriLabDriveLastSync",new Date().toISOString());
+    refreshSelectors();renderCustomers();
+    setDriveStatus(`הסנכרון הסתיים: נמצאו ${cities.length} ערים ו־${imported.length} לקוחות; נוספו ${added}, קושרו לתיקיות קיימות ${linked}.`);
+  }catch(err){console.error(err);setDriveStatus(err.message||"הסנכרון נכשל",true)}
+}
+function showLastDriveSync(){
+  const iso=localStorage.getItem("loriLabDriveLastSync");
+  if(iso)driveSyncStatus.textContent="סנכרון אחרון: "+new Date(iso).toLocaleString("he-IL");
+}
+
+seedCustomers();refreshSelectors();redraw();showLastDriveSync();
+
+
+</script>
+
+<script>
+
+let reportPeriod="year";
+let driveReportCache=null;
+let driveReportLoadPromise=null;
+function startOfReportPeriod(period,base=new Date()){
+  const d=new Date(base.getFullYear(),base.getMonth(),base.getDate());
+  if(period==="day") return d;
+  if(period==="week"){
+    const day=d.getDay();
+    const diff=(day===0?6:day-1);
+    d.setDate(d.getDate()-diff); return d;
+  }
+  if(period==="month") return new Date(d.getFullYear(),d.getMonth(),1);
+  return new Date(d.getFullYear(),0,1);
+}
+function endOfReportPeriod(period,base=new Date()){
+  const start=startOfReportPeriod(period,base),end=new Date(start);
+  if(period==="day")end.setDate(end.getDate()+1);
+  else if(period==="week")end.setDate(end.getDate()+7);
+  else if(period==="month")end.setMonth(end.getMonth()+1);
+  else end.setFullYear(end.getFullYear()+1);
+  return end;
+}
+function reportDateLabel(period){
+  const now=new Date(),start=startOfReportPeriod(period,now),end=endOfReportPeriod(period,now);end.setDate(end.getDate()-1);
+  const f=d=>`${String(d.getDate()).padStart(2,"0")}.${String(d.getMonth()+1).padStart(2,"0")}.${d.getFullYear()}`;
+  if(period==="day")return `דו״ח יומי — ${f(start)}`;
+  if(period==="week")return `דו״ח שבועי — ${f(start)} עד ${f(end)}`;
+  if(period==="month")return `דו״ח חודשי — ${String(start.getMonth()+1).padStart(2,"0")}.${start.getFullYear()}`;
+  return `דו״ח שנתי — ${start.getFullYear()}`;
+}
+function setReportPeriod(period,btn){
+  reportPeriod=period;
+  document.querySelectorAll('.report-period-btn').forEach(b=>b.classList.toggle('active',b===btn));
+  renderDriveReport();
+}
+function parseFolderDateObject(name){
+  const ms=parseHistoryDate(name);return ms?new Date(ms):null;
+}
+async function loadDriveReport(force=false){
+  if(driveReportCache&&!force){renderDriveReport();return driveReportCache;}
+  if(driveReportLoadPromise&&!force)return driveReportLoadPromise;
+  driveReportLoadPromise=(async()=>{
+    reportPeriodLabel.textContent=reportDateLabel(reportPeriod);
+    reportContent.innerHTML='<div class="history-loading">מתחיל לקרוא נתונים מ־Google Drive…</div>';
+    try{
+      const cfg=getDriveConfig();
+      if(!cfg.clientId||!cfg.rootFolderId)throw new Error('יש להגדיר תחילה את Google Drive');
+      if(!navigator.onLine)throw new Error('אין חיבור לאינטרנט');
+      if(!driveAccessToken)driveAccessToken=await requestDriveToken(cfg.clientId);
+      const customers=readJson(DB_KEYS.customers,[]).filter(c=>c.name&&c.city);
+      const rows=[];
+      for(let i=0;i<customers.length;i++){
+        const c=customers[i];
+        reportContent.innerHTML=`<div class="history-loading">טוען לקוח ${i+1} מתוך ${customers.length}<br><strong>${escapeHtml(c.name)}</strong></div>`;
+        let folderId=c.driveFolderId;
+        if(!folderId){
+          const cityFolder=await driveFindFolder(cfg.rootFolderId,c.city);
+          if(!cityFolder)continue;
+          const clientFolder=await driveFindFolder(cityFolder.id,c.name);
+          if(!clientFolder)continue;
+          folderId=clientFolder.id;
+        }
+        const dateFolders=await driveListFolders(folderId);
+        const dated=dateFolders.map(folder=>({folder,date:parseFolderDateObject(folder.name)})).filter(x=>x.date);
+        const results=await Promise.all(dated.map(async x=>{
+          const files=await driveListPdfs(x.folder.id);
+          return files.length?{customer:c.name,city:c.city,date:x.date,dateName:formatHistoryDate(x.folder.name),count:files.length}:null;
+        }));
+        rows.push(...results.filter(Boolean));
+      }
+      driveReportCache=rows;
+      renderDriveReport();
+      return rows;
+    }catch(e){
+      console.error(e);
+      reportContent.innerHTML=`<div class="empty">${escapeHtml(e.message||'טעינת הדו״ח נכשלה')}</div>`;
+      throw e;
+    }finally{
+      driveReportLoadPromise=null;
+    }
+  })();
+  return driveReportLoadPromise;
+}
+function updateReportCustomerFilter(){
+  const select=document.getElementById('reportCustomerFilter');
+  if(!select||!driveReportCache)return;
+  const current=select.value;
+  const names=[...new Set(driveReportCache.map(r=>r.customer))].sort((a,b)=>a.localeCompare(b,'he'));
+  select.innerHTML='<option value="">כל הלקוחות</option>'+names.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+  if(names.includes(current))select.value=current;
+}
+function getCurrentReportData(){
+  if(!driveReportCache)return {filtered:[],clients:[],total:0};
+  const start=startOfReportPeriod(reportPeriod),end=endOfReportPeriod(reportPeriod);
+  const customer=document.getElementById('reportCustomerFilter')?.value||'';
+  const filtered=driveReportCache.filter(r=>r.date>=start&&r.date<end&&(!customer||r.customer===customer)).sort((a,b)=>b.date-a.date||a.customer.localeCompare(b.customer,'he'));
+  const grouped=new Map();
+  for(const r of filtered){
+    const key=r.city+'|'+r.customer;
+    if(!grouped.has(key))grouped.set(key,{customer:r.customer,city:r.city,total:0,dates:[]});
+    const g=grouped.get(key);g.total+=r.count;g.dates.push(r);
+  }
+  const clients=[...grouped.values()].sort((a,b)=>b.total-a.total||a.customer.localeCompare(b.customer,'he'));
+  return {filtered,clients,total:filtered.reduce((n,r)=>n+r.count,0)};
+}
+function renderDriveReport(){
+  reportPeriodLabel.textContent=reportDateLabel(reportPeriod);
+  document.getElementById('reportPrintTitle').textContent='Lori Lab — '+reportDateLabel(reportPeriod);
+  if(!driveReportCache){reportContent.innerHTML='<div class="history-loading">לחץ על רענון כדי לקרוא את הנתונים מ־Google Drive.</div>';return;}
+  updateReportCustomerFilter();
+  const {clients,total}=getCurrentReportData();
+  const summary=`<div class="report-summary"><div class="report-stat"><strong>${total}</strong><span>סה״כ בדיקות</span></div><div class="report-stat"><strong>${clients.length}</strong><span>לקוחות</span></div></div>`;
+  const details=clients.length?clients.map(g=>`<div class="report-row"><div class="report-row-head"><span>${escapeHtml(g.customer)} · ${escapeHtml(g.city)}</span><span>${g.total} בדיקות</span></div><div class="report-row-dates">${g.dates.map(r=>`<div class="report-date-line"><span>📅 ${escapeHtml(r.dateName)}</span><strong>${r.count} בדיקות</strong></div>`).join('')}</div></div>`).join(''):'<div class="empty">לא נמצאו בדיקות בתקופה זו</div>';
+  reportContent.innerHTML=summary+details;
+}
+async function printDriveReport(){
+  try{
+    if(!driveReportCache)await loadDriveReport(false);
+    const {clients}=getCurrentReportData();
+    if(!clients.length){alert('אין נתונים להדפסה בתקופה שנבחרה');return;}
+    window.print();
+  }catch(e){}
+}
+function reportPdfFilename(){
+  const customer=document.getElementById('reportCustomerFilter')?.value||'כל הלקוחות';
+  const clean=s=>String(s).replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,' ').trim();
+  return `Lori Lab - ${clean(reportDateLabel(reportPeriod))} - ${clean(customer)}.pdf`;
+}
+function drawReportPageHeader(ctx,title,pageNo,totalPages){
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,1240,1754);
+  ctx.direction='rtl';ctx.textAlign='right';ctx.fillStyle='#124f3a';
+  ctx.font='700 54px Arial';ctx.fillText('Lori Lab',1160,90);
+  ctx.font='700 40px Arial';ctx.fillText(title,1160,150);
+  ctx.font='24px Arial';ctx.fillStyle='#5e6962';
+  ctx.fillText(`הופק: ${new Date().toLocaleString('he-IL')}`,1160,195);
+  ctx.textAlign='left';ctx.fillText(`עמוד ${pageNo} מתוך ${totalPages}`,80,195);
+  ctx.strokeStyle='#d5dfd8';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(80,220);ctx.lineTo(1160,220);ctx.stroke();
+}
+async function createDriveReportPdf(){
+  try{
+    if(!driveReportCache)await loadDriveReport(false);
+  }catch(e){return;}
+  const {clients,total}=getCurrentReportData();
+  if(!clients.length){alert('אין נתונים להפקת PDF בתקופה שנבחרה');return;}
+  const rows=[];
+  for(const g of clients){
+    for(const r of g.dates)rows.push({customer:g.customer,city:g.city,date:r.dateName,count:r.count});
+  }
+  const rowsPerPage=18,totalPages=Math.max(1,Math.ceil(rows.length/rowsPerPage));
+  const pageImages=[];
+  for(let p=0;p<totalPages;p++){
+    const canvas=document.createElement('canvas');canvas.width=1240;canvas.height=1754;
+    const ctx=canvas.getContext('2d');
+    drawReportPageHeader(ctx,reportDateLabel(reportPeriod),p+1,totalPages);
+    let y=270;
+    if(p===0){
+      ctx.direction='rtl';ctx.textAlign='right';ctx.fillStyle='#124f3a';ctx.font='700 30px Arial';
+      ctx.fillText(`סה״כ בדיקות: ${total}`,1160,y);
+      ctx.fillText(`מספר לקוחות: ${clients.length}`,760,y);
+      const selected=document.getElementById('reportCustomerFilter')?.value;
+      if(selected)ctx.fillText(`לקוח: ${selected}`,420,y);
+      y+=55;
+    }
+    ctx.fillStyle='#e7efe9';ctx.fillRect(80,y,1080,54);
+    ctx.direction='rtl';ctx.textAlign='right';ctx.fillStyle='#124f3a';ctx.font='700 25px Arial';
+    ctx.fillText('מספר בדיקות',1140,y+36);ctx.fillText('תאריך',890,y+36);ctx.fillText('עיר',590,y+36);ctx.fillText('לקוח',300,y+36);
+    y+=64;
+    const pageRows=rows.slice(p*rowsPerPage,(p+1)*rowsPerPage);
+    for(let i=0;i<pageRows.length;i++){
+      const r=pageRows[i];
+      if(i%2===0){ctx.fillStyle='#fafcfb';ctx.fillRect(80,y-8,1080,62);}
+      ctx.fillStyle='#26342d';ctx.font='24px Arial';ctx.textAlign='right';ctx.direction='rtl';
+      ctx.fillText(String(r.count),1140,y+30);ctx.fillText(r.date,890,y+30);
+      ctx.fillText(r.city,590,y+30);ctx.fillText(r.customer,300,y+30);
+      ctx.strokeStyle='#edf1ee';ctx.beginPath();ctx.moveTo(80,y+54);ctx.lineTo(1160,y+54);ctx.stroke();
+      y+=66;
+    }
+    pageImages.push(dataUrlToBytes(canvas.toDataURL('image/jpeg',0.92)));
+  }
+  const pdf=makeMultiPagePdf(pageImages,1240,1754);
+  await shareOrDownloadPdf(pdf,reportPdfFilename());
+}
+
+/* Lori Lab v11.1 — עריכה ומחיקה של רשומות היסטוריה */
+let editingHistoryId = null;
+
+function ensureHistoryIds(){
+  const rows = readJson(DB_KEYS.history, []);
+  let changed = false;
+  rows.forEach(r => {
+    if(!r.id){ r.id = uid(); changed = true; }
+  });
+  if(changed) writeJson(DB_KEYS.history, rows);
+}
+
+function setHistoryEditMode(record=null){
+  const title = document.querySelector("#certificateScreen .card h2");
+  const saveBtn = [...document.querySelectorAll("#certificateScreen .actions button")]
+    .find(b => b.getAttribute("onclick") === "saveRecord()");
+
+  let banner = document.getElementById("historyEditBanner");
+  if(!banner){
+    banner = document.createElement("div");
+    banner.id = "historyEditBanner";
+    banner.className = "hidden";
+    banner.style.cssText =
+      "margin:0 0 14px;padding:12px;border:2px solid #c9a12d;border-radius:12px;" +
+      "background:#fff8dd;color:#174b31;font-weight:700;line-height:1.5";
+    title.insertAdjacentElement("afterend", banner);
+  }
+
+  if(record){
+    title.textContent = "עריכת תעודה";
+    if(saveBtn) saveBtn.textContent = "✅ שמור תיקון";
+    banner.classList.remove("hidden");
+    banner.innerHTML =
+      `עריכת רשומה: <strong>${escapeHtml(record.identification || "ללא מספר זיהוי")}</strong><br>` +
+      `<button type="button" class="secondary small" onclick="cancelHistoryEdit()" style="margin-top:8px">ביטול עריכה</button>`;
+  }else{
+    title.textContent = "תעודה חדשה";
+    if(saveBtn) saveBtn.textContent = "📋 שמור ברשומות";
+    banner.classList.add("hidden");
+    banner.innerHTML = "";
+  }
+}
+
+function currentRecord(){
+  const c = readJson(DB_KEYS.customers, []).find(x => x.id === clientSelect.value);
+  const old = editingHistoryId
+    ? readJson(DB_KEYS.history, []).find(x => x.id === editingHistoryId)
+    : null;
+
+  return {
+    id: editingHistoryId || uid(),
+    date: date.value,
+    city: citySelect.value || old?.city || "",
+    client: c?.name || v("sender") || old?.client || "",
+    owner: v("owner"),
+    sender: v("sender"),
+    type: v("birdType"),
+    identification: v("idNumber"),
+    description: v("description"),
+    result: getSex() === "male" ? "זכר" : "נקבה",
+    createdAt: old?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function saveCurrentRecord(showMessage=true){
+  const r = currentRecord();
+
+  if(!r.date){
+    if(showMessage) alert("יש לבחור תאריך");
+    return false;
+  }
+  if(!r.client){
+    if(showMessage) alert("יש לבחור לקוח או למלא שם שולח");
+    return false;
+  }
+
+  const list = readJson(DB_KEYS.history, []);
+
+  if(editingHistoryId){
+    const i = list.findIndex(x => x.id === editingHistoryId);
+    if(i >= 0) list[i] = r;
+    else list.unshift({...r, id:uid()});
+
+    writeJson(DB_KEYS.history, list);
+    editingHistoryId = null;
+    setHistoryEditMode(null);
+    if(showMessage) alert("התיקון נשמר בהצלחה");
+    return true;
+  }
+
+  const duplicate = list.some(x =>
+    x.date === r.date &&
+    x.client === r.client &&
+    x.identification === r.identification &&
+    x.type === r.type &&
+    x.description === r.description &&
+    x.result === r.result
+  );
+
+  if(!duplicate){
+    list.unshift(r);
+    writeJson(DB_KEYS.history, list);
+  }
+
+  if(showMessage) alert(duplicate ? "הרשומה כבר קיימת" : "הרשומה נשמרה בטלפון");
+  return true;
+}
+
+function saveRecord(){
+  saveCurrentRecord(true);
+}
+
+function editHistoryRecord(id){
+  const r = readJson(DB_KEYS.history, []).find(x => x.id === id);
+  if(!r){
+    alert("הרשומה לא נמצאה");
+    renderHistory();
+    return;
+  }
+
+  editingHistoryId = id;
+
+  citySelect.value = r.city || "";
+
+  const customer = readJson(DB_KEYS.customers, []).find(c =>
+    c.city === (r.city || "") && c.name === (r.client || "")
+  );
+  clientSelect.value = customer?.id || "";
+  clientSearch.value = customer?.name || r.client || "";
+
+  owner.value = r.owner || r.client || "";
+  sender.value = r.sender || r.client || "";
+  birdType.value = r.type || "";
+  idNumber.value = r.identification || "";
+  description.value = r.description || "";
+  date.value = r.date || "";
+
+  const sex = r.result === "זכר" ? "male" : "female";
+  const radio = document.querySelector(`input[name="sex"][value="${sex}"]`);
+  if(radio) radio.checked = true;
+
+  setHistoryEditMode(r);
+  redraw();
+  switchScreen("certificateScreen");
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+function cancelHistoryEdit(){
+  editingHistoryId = null;
+  setHistoryEditMode(null);
+  clearForm();
+}
+
+function deleteHistoryRecord(id){
+  const list = readJson(DB_KEYS.history, []);
+  const r = list.find(x => x.id === id);
+
+  if(!r){
+    alert("הרשומה כבר אינה קיימת");
+    renderHistory();
+    return;
+  }
+
+  const details = [r.identification, r.type, r.result].filter(Boolean).join(" · ");
+  if(!confirm(`למחוק את הרשומה${details ? "\n" + details : ""}?\n\nהיא תוסר גם מהטבלאות ומקובץ CSV.`)) return;
+
+  writeJson(DB_KEYS.history, list.filter(x => x.id !== id));
+  refreshBirdTypes();
+
+  if(editingHistoryId === id){
+    editingHistoryId = null;
+    setHistoryEditMode(null);
+  }
+
+  renderHistory();
+  alert("הרשומה נמחקה מההיסטוריה ומהטבלאות");
+}
+
+function renderHistory(){
+  ensureHistoryIds();
+
+  const q = (historySearch.value || "").trim().toLowerCase();
+  const list = readJson(DB_KEYS.history, [])
+    .filter(r => [r.client,r.city,r.type,r.identification,r.description,r.result,r.date]
+      .join(" ").toLowerCase().includes(q))
+    .sort((a,b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+
+  historyList.innerHTML = list.length
+    ? list.map(r => `
+      <div class="list-item">
+        <div class="list-title">${escapeHtml(r.identification || "ללא מספר זיהוי")} · ${escapeHtml(r.result || "")}</div>
+        <div class="list-sub">${escapeHtml(r.client || "")} · ${escapeHtml(r.city || "")} · ${escapeHtml(r.type || "")} · ${escapeHtml(r.date || "")}</div>
+        <div class="list-sub">${escapeHtml(r.description || "")}</div>
+        <div class="list-actions">
+          <button class="secondary" onclick="editHistoryRecord('${r.id}')">✏️ עריכה</button>
+          <button class="secondary" onclick="deleteHistoryRecord('${r.id}')">🗑️ מחיקה</button>
+        </div>
+      </div>`).join("")
+    : '<div class="empty">אין עדיין רשומות</div>';
+}
+
+const originalClearFormV111 = clearForm;
+clearForm = function(){
+  editingHistoryId = null;
+  setHistoryEditMode(null);
+  originalClearFormV111();
+};
+
+ensureHistoryIds();
+refreshBirdTypes();
+setHistoryEditMode(null);
+
+
+</script>
+
+<script src="https://accounts.google.com/gsi/client" async defer>
+
+</script>
+<script>
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js",{updateViaCache:"none"}).then(r=>r.update()).catch(console.error);
+  });
+}
+
+
+
+window.addEventListener("DOMContentLoaded",()=>{initLocalFolder();});
+</script>
+</body></html>
